@@ -1,6 +1,4 @@
 import State as Board
-import unittest
-import os
 
 
 class MoveGenerator:
@@ -9,7 +7,7 @@ class MoveGenerator:
         """takes a board, gets the pieces, gets all legal moves"""
         self.board = board
         self.pieces = self.get_pieces()
-        self.moves = self.get_all_moves()
+        self.moves = self.get_moves()
 
     def get_pieces(self):
         if self.board.whites_turn:
@@ -17,13 +15,13 @@ class MoveGenerator:
         else:
             return self.board.black_piece_list
 
-    def get_all_moves(self):
+    def get_moves(self):
         moves = []
         for piece in self.pieces:
-            moves += self.get_moves(piece)
+            moves += self.get_pieces_moves(piece)
         return moves
 
-    def get_moves(self, piece):
+    def get_pieces_moves(self, piece):
         moves = []
         r = piece[0]
         c = piece[1]
@@ -34,32 +32,32 @@ class MoveGenerator:
                 f = -1
             else:
                 f = 1
-            moves += self.scan(r, c, f, -1, True, True)
-            moves += self.scan(r, c, f, 0, True, False)
-            moves += self.scan(r, c, f, 1, True, True)
+            moves += self.scan(r, c, f, -1, True, True, True)
+            moves += self.scan(r, c, f, 0, True, False, False)
+            moves += self.scan(r, c, f, 1, True, True, True)
 
         elif char_rep == "N":
-            moves += self.symscan(r, c, 2, 1, True, True)
-            moves += self.symscan(r, c, 1, 2, True, True)
+            moves += self.symscan(r, c, 2, 1, True, True, False)
+            moves += self.symscan(r, c, 1, 2, True, True, False)
 
         elif char_rep == "B":
-            moves += self.symscan(r, c, 1, 1, False, True)
-            moves += self.symscan(r, c, 0, 1, True, False)
+            moves += self.symscan(r, c, 1, 1, False, True, False)
+            moves += self.symscan(r, c, 0, 1, True, False, False)
 
         elif char_rep == "R":
-            moves += self.symscan(r, c, 0, 1, False, True)
+            moves += self.symscan(r, c, 0, 1, False, True, False)
 
         elif char_rep == "Q":
-            moves += self.symscan(r, c, 0, 1, False, True)
-            moves += self.symscan(r, c, 1, 1, False, True)
+            moves += self.symscan(r, c, 0, 1, False, True, False)
+            moves += self.symscan(r, c, 1, 1, False, True, False)
 
         elif char_rep == "K":
-            moves += self.symscan(r, c, 0, 1, True, True)
-            moves += self.symscan(r, c, 1, 1, True, True)
+            moves += self.symscan(r, c, 0, 1, True, True, False)
+            moves += self.symscan(r, c, 1, 1, True, True, False)
 
         return moves
 
-    def scan(self, r, c, tr, tc, short, capture):
+    def scan(self, r, c, tr, tc, short, can_capture, must_capture):
         if not self.check_bounds(r + tr, c + tc):
             return []
         if tr == 0:
@@ -82,13 +80,13 @@ class MoveGenerator:
         origin = self.board.numpy_board[origin_cord]
         target_cord = (r + tr, c + tc)
         target = self.board.numpy_board[target_cord]
-        if target == 0:
+        if target == 0 and not must_capture:
             add_move = True
             move_to_add = (origin_cord, target_cord, captured, piece_captured)
         else:
             stop = True
         if origin * target < 0:
-            if capture:
+            if can_capture:
                 add_move = True
                 captured = True
                 piece_captured = self.board.num_to_char_piece[self.board.numpy_board[target_cord]]
@@ -99,8 +97,8 @@ class MoveGenerator:
             else:
                 return []
         if add_move:
-            return [move_to_add] + self.scan(r, c, tr + row_change, tc + col_change, short, capture)
-        return self.scan(r, c, tr * 2, tc * 2, short, capture)
+            return [move_to_add] + self.scan(r, c, tr + row_change, tc + col_change, short, can_capture, must_capture)
+        return self.scan(r, c, tr * 2, tc * 2, short, can_capture, must_capture)
 
     def check_bounds(self, r, c):
         if r < 0 or r >= self.board.row_count:
@@ -109,273 +107,29 @@ class MoveGenerator:
             return False
         return True
 
-
-    def symscan(self, r, c, tr, tc, short, capture):
+    def symscan(self, r, c, tr, tc, short, can_capture, must_capture):
         moves = list()
-        moves += self.scan(r, c, tr, tc, short, capture)
-        moves += self.scan(r, c, -tc, tr, short, capture)
-        moves += self.scan(r, c, -tr, -tc, short, capture)
-        moves += self.scan(r, c, tc, -tr, short, capture)
+        moves += self.scan(r, c, tr, tc, short, can_capture, must_capture)
+        moves += self.scan(r, c, -tc, tr, short, can_capture, must_capture)
+        moves += self.scan(r, c, -tr, -tc, short, can_capture, must_capture)
+        moves += self.scan(r, c, tc, -tr, short, can_capture, must_capture)
         return moves
 
+    def get_char_moves(self):
+        char_moves = []
+        for move in self.moves:
+            char_moves.append(self.move_to_char_move(move))
+        return char_moves
 
-class PawnTest(unittest.TestCase):
-    init = ["0 W",
-            ".....",
-            ".....",
-            ".....",
-            ".p.p.",
-            "P.P.P",
-            ".....",
-            ]
-    p1 = (4, 0, "P")
-    p2 = (4, 2, "P")
-    p3 = (4, 4, "P")
-
-    p1_moves = [
-        ((4, 0), (3, 0), False, '.'),
-        ((4, 0), (3, 1), True,  'p')
-    ]
-
-    p2_moves = [
-        ((4, 2), (3, 1), True, 'p'),
-        ((4, 2), (3, 2), False, '.'),
-        ((4, 2), (3, 3), True, 'p')
-    ]
-    p3_moves = [
-        ((4, 4), (3, 3), True,  'p'),
-        ((4, 4), (3, 4), False, '.')
-    ]
-
-    # TODO: turn this test back on
-    all_moves = p1_moves + p2_moves + p3_moves
-
-    def test_pawns(self):
-        self.check_pawn(self.p1, self.p1_moves)
-        self.check_pawn(self.p2, self.p2_moves)
-        self.check_pawn(self.p3, self.p3_moves)
-
-    def check_pawn(self, pawn, moves):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(moves) == set(move_generator.get_moves(pawn))
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.all_moves) == set(move_generator.moves)
+    @staticmethod
+    def move_to_char_move(move):
+        move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
+                           (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
+                           (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
+                           (2, 0): "a4", (2, 1): "b4", (2, 2): "c4", (2, 3): "d4", (2, 4): "e4",
+                           (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
+                           (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
+                           }
+        return move_translator[move[0]] + "-" + move_translator[move[1]]
 
 
-class KnightTest(unittest.TestCase):
-    init = ["0 W",
-            ".p.p.",
-            "p...p",
-            "..N..",
-            "p...p",
-            ".p.p.",
-            ".....",
-            ]
-
-    N_moves = [
-        ((2, 2), (0, 1), True, 'p'),
-        ((2, 2), (0, 3), True, 'p'),
-        ((2, 2), (1, 0), True, 'p'),
-        ((2, 2), (1, 4), True, 'p'),
-        ((2, 2), (3, 0), True, 'p'),
-        ((2, 2), (3, 4), True, 'p'),
-        ((2, 2), (4, 1), True, 'p'),
-        ((2, 2), (4, 3), True, 'p'),
-    ]
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.N_moves) == set(move_generator.moves)
-
-
-class BishopTest(unittest.TestCase):
-    init = ["0 W",
-            "....p",
-            ".p...",
-            ".pB..",
-            ".....",
-            ".....",
-            ".....",
-            ]
-    B_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (0, 4), True, 'p'),
-        ((2, 2), (3, 3), False, '.'),
-        ((2, 2), (4, 4), False, '.'),
-        ((2, 2), (3, 1), False, '.'),
-        ((2, 2), (4, 0), False, '.'),
-        ((2, 2), (1, 1), True, 'p'),
-    ]
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.B_moves) == set(move_generator.moves)
-
-class RookTest(unittest.TestCase):
-    init = ["0 W",
-            "..k..",
-            ".....",
-            ".pR..",
-            ".....",
-            ".....",
-            "..p..",
-            ]
-
-    R_moves = [
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (0, 2), True, 'k'),
-        ((2, 2), (2, 1), True, 'p'),
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (2, 4), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (4, 2), False, '.'),
-        ((2, 2), (5, 2), True, 'p'),
-    ]
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.R_moves) == set(move_generator.moves)
-
-class QueenTest(unittest.TestCase):
-    init = ["0 W",
-            "p.p.p",
-            ".....",
-            "p.Q.p",
-            ".....",
-            "p.p.p",
-            ".....",
-            ]
-
-    Q_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (2, 4), True, 'p'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (4, 2), True, 'p'),
-        ((2, 2), (2, 1), False, '.'),
-        ((2, 2), (2, 0), True, 'p'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (0, 2), True, 'p'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (0, 4), True, 'p'),
-        ((2, 2), (3, 3), False, '.'),
-        ((2, 2), (4, 4), True, 'p'),
-        ((2, 2), (3, 1), False, '.'),
-        ((2, 2), (4, 0), True, 'p'),
-        ((2, 2), (1, 1), False, '.'),
-        ((2, 2), (0, 0), True, 'p'),
-    ]
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.Q_moves) == set(move_generator.moves)
-
-
-class King(unittest.TestCase):
-    init = ["0 W",
-            ".....",
-            ".p.p.",
-            "..K..",
-            ".p.p.",
-            ".....",
-            ".....",
-            ]
-
-    K_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (2, 1), False, '.'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (1, 3), True, 'p'),
-        ((2, 2), (3, 3), True, 'p'),
-        ((2, 2), (3, 1), True, 'p'),
-        ((2, 2), (1, 1), True, 'p'),
-    ]
-
-    def test_moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.K_moves) == set(move_generator.moves)
-
-
-class StartingBoard(unittest.TestCase):
-    init = ["0 W",
-            "kqbnr",
-            "ppppp",
-            ".....",
-            ".....",
-            "PPPPP",
-            "RNBQK"]
-    white_piece_list = [(4, 0, "P"),
-                        (4, 1, "P"),
-                        (4, 2, "P"),
-                        (4, 3, "P"),
-                        (4, 4, "P"),
-                        (5, 0, "R"),
-                        (5, 1, "N"),
-                        (5, 2, "B"),
-                        (5, 3, "Q"),
-                        (5, 4, "K"),
-                        ]
-    black_piece_list = [(0, 0, "k"),
-                        (0, 1, "q"),
-                        (0, 2, "b"),
-                        (0, 3, "n"),
-                        (0, 4, "r"),
-                        (1, 0, "p"),
-                        (1, 1, "p"),
-                        (1, 2, "p"),
-                        (1, 3, "p"),
-                        (1, 4, "p"),
-                        ]
-
-    moves = [
-        ((4, 0), (5, 0), False, '.'),
-        ((4, 1), (5, 1), False, '.'),
-        ((4, 2), (5, 2), False, '.'),
-        ((4, 3), (5, 3), False, '.'),
-        ((4, 4), (5, 4), False, '.'),
-        ((5, 1), (3, 0), False, '.'),
-        ((5, 1), (3, 2), False, '.')
-    ]
-
-    def moves(self):
-        game_state = Board.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.moves) == set(move_generator.moves)
-
-
-class AutoTest(unittest.TestCase):
-
-    def __init__(self):
-        self.directory = "genmoves-tests/"
-        self.files = os.listdir(self.directory)
-        self.tests = []
-        self.targets = []
-        for file in self.files:
-            if file.endswith(".in"):
-                self.tests.append(file)
-            else:
-                self.targets.append(file)
-
-    def generated_moves(self):
-        for i in range(len(self.tests)):
-            game_state = Board.Board(self.tests[i])
-            move_generator = MoveGenerator(game_state)
-
-
-
-
-if __name__ == "__main__":
-    unittest.main()
