@@ -30,10 +30,11 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board: Board, is_white: bool, depth: int):
+    def __init__(self, board: Board, is_white: bool, depth: int, testing=False):
         self.board = board
         self.is_white = is_white
         self.depth = depth
+        self.testing = testing
 
     def get_move(self):
         assert self.is_white == self.board.whites_turn
@@ -72,7 +73,8 @@ class Negamax(Player):
         moves = MoveGenerator(self.board).get_moves()
         max_val = -10000
         for move in moves:
-            old_state = self.board.get_char_state()
+            if self.testing:
+                old_state = self.board.get_char_state()
             # apply move
             captured_piece, promoted_piece = self.board.apply_move(move)
             # get the value of this move
@@ -82,6 +84,7 @@ class Negamax(Player):
                 max_val = val
             # undo move
             self.board.undo_move(move, captured_piece, promoted_piece)
-            assert set(old_state) == set(self.board.get_char_state())
+            if self.testing:
+                assert set(old_state) == set(self.board.get_char_state())
         return max_val
 

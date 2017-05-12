@@ -63,8 +63,6 @@ class StartingBoard(unittest.TestCase):
         assert self.whites_turn == game_state.whites_turn
         assert self.white_piece_list == game_state.white_piece_list
         assert self.black_piece_list == game_state.black_piece_list
-        # todo: make numpy_board check
-        # assert self.numpy_board == game_state.numpy_board
         assert self.init == game_state.get_char_state()
 
 
@@ -317,8 +315,8 @@ class StartingBoard(unittest.TestCase):
     def test_evaluator(self):
         # set up players
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 1)
-        black = Player.Negamax(board, False, 1)
+        white = Player.Negamax(board, True, 1, True)
+        black = Player.Negamax(board, False, 1, True)
         # play game
         while not board.winner:
             move = white.get_move()

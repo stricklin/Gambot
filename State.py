@@ -201,8 +201,6 @@ class Board:
         :param move: the move to apply, is of form (src, dest, char_rep of piece) where src and dest are both (r, c)
         :return: None
         """
-        # TODO: make this assertion work if it can be done cheaply
-        assert self.move_is_legal(move)
         captured_piece = None
         # remove captured piece
         if move[2]:
@@ -290,9 +288,3 @@ class Board:
         if move[2]:
             self.place_piece(move[1], captured_piece)
             self.value -= self.piece_value[captured_piece.upper()]
-
-    def move_is_legal(self, move):
-        # TODO make this assertion
-        return True
-
-
