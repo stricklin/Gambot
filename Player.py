@@ -24,8 +24,7 @@ class Random(Player):
         moves = MoveGenerator(self.board).get_moves()
         random.shuffle(moves)
         if not moves:
-            # TODO: is this proper behavior? or should it lose?
-            self.board.winner = "draw"
+            self.board.lose()
             return None
         return moves[0]
 
@@ -38,36 +37,44 @@ class Negamax(Player):
 
     def get_move(self):
         assert self.is_white == self.board.whites_turn
+        best_moves = []
         # initialize max_val to something too low
         max_val = -10000
         # generate and test each move
-        # TODO: what if there aren't any moves?
         moves = MoveGenerator(self.board).get_moves()
+        if not moves:
+            self.board.lose()
+            return None
         for move in moves:
             # apply move
-            captured_piece, promoted_piece = self.board.apply_move(move, self.is_white)
+            captured_piece, promoted_piece = self.board.apply_move(move,)
             # get the value of this move
             val = - self.negamax(self.depth, not self.is_white)
             # if this is a better move, remember it
             # the better move is the smallest value because its the value of the opponents turn
             if val > max_val:
                 max_val = val
-                best_move = move
+                best_moves = [move]
+            # if more than one move is best, keep them all
+            elif val == max_val:
+                best_moves.append(move)
             # undo move
             self.board.undo_move(move, captured_piece, promoted_piece)
-        return best_move
+        # return a random move from the best moves
+        random.shuffle(best_moves)
+        return best_moves[0]
 
-    # TODO: this is a huge pile of untested code. plz be careful with it!
     def negamax(self, depth: int, is_white):
         # check if the game is done or depth is reached
-        if depth <= 0 or self.board.winner is not None:
-            # TODO: the incremental evaluator isn't working right. until it is, we are scanning the board to get the value
-            return self.board.get_value()
+        if depth <= 0 or self.board.winner:
+            return self.board.value
+            # return self.board.get_value()
         moves = MoveGenerator(self.board).get_moves()
         max_val = -10000
         for move in moves:
+            old_state = self.board.get_char_state()
             # apply move
-            captured_piece, promoted_piece = self.board.apply_move(move, is_white)
+            captured_piece, promoted_piece = self.board.apply_move(move)
             # get the value of this move
             val = -self.negamax(depth - 1, not is_white)
             # remember the best value
@@ -75,5 +82,6 @@ class Negamax(Player):
                 max_val = val
             # undo move
             self.board.undo_move(move, captured_piece, promoted_piece)
+            assert set(old_state) == set(self.board.get_char_state())
         return max_val
 

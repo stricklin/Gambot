@@ -1,5 +1,6 @@
 import State
 from MoveGenerator import MoveGenerator
+import Player
 import unittest
 import os
 import numpy as np
@@ -298,19 +299,36 @@ class StartingBoard(unittest.TestCase):
                         ]
 
     moves = [
-        ((4, 0), (5, 0), False, '.'),
-        ((4, 1), (5, 1), False, '.'),
-        ((4, 2), (5, 2), False, '.'),
-        ((4, 3), (5, 3), False, '.'),
-        ((4, 4), (5, 4), False, '.'),
+        ((4, 0), (3, 0), False, '.'),
+        ((4, 1), (3, 1), False, '.'),
+        ((4, 2), (3, 2), False, '.'),
+        ((4, 3), (3, 3), False, '.'),
+        ((4, 4), (3, 4), False, '.'),
         ((5, 1), (3, 0), False, '.'),
         ((5, 1), (3, 2), False, '.')
     ]
 
-    def moves(self):
+    def test_moves(self):
         game_state = State.Board(self.init)
         move_generator = MoveGenerator(game_state)
+        foo = move_generator.moves
         assert set(self.moves) == set(move_generator.moves)
+
+    def test_evaluator(self):
+        # set up players
+        board = State.Board(self.init)
+        white = Player.Negamax(board, True, 1)
+        black = Player.Negamax(board, False, 1)
+        # play game
+        while not board.winner:
+            move = white.get_move()
+            board.apply_move(move)
+            assert board.value == board.get_value()
+            if not board.winner:
+                move = black.get_move()
+                board.apply_move(move)
+                assert board.value == board.get_value()
+        print("winner: " + board.winner)
 
 
 class AutoTest(unittest.TestCase):
@@ -344,22 +362,35 @@ class Promotion(unittest.TestCase):
             ".....",
             "....."]
 
+    before = ["0 W",
+              ".....",
+              "P....",
+              ".....",
+              ".....",
+              ".....",
+              ".....",
+              "100"]
+
     after = ["0 B",
              "Q....",
              ".....",
              ".....",
              ".....",
              ".....",
-             "....."]
+             ".....",
+             "-500"]
 
     def test_do_undo(self):
         board = State.Board(self.init)
         move_generator = MoveGenerator(board)
         move = move_generator.get_moves()[0]
         board.apply_move(move)
+        foo = board.get_char_state()
         assert self.after == board.get_char_state()
         board.undo_move(move, None, True)
-        assert self.init == board.get_char_state()
+        foo = board.get_char_state()
+        assert self.before == board.get_char_state()
+
 
 class Turn40Win(unittest.TestCase):
     init = ["40 B",
@@ -370,13 +401,11 @@ class Turn40Win(unittest.TestCase):
             "...p.",
             "....K"]
     move = ((4, 3), (5, 4), True, "K")
-    winner = "Black"
+    winner = "black"
 
     def test_win(self):
         board = State.Board(self.init)
-        foo = board.get_char_state()
         board.apply_move(self.move)
-        foo = board.get_char_state()
         assert  self.winner == board.winner
 
 

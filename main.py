@@ -39,14 +39,16 @@ if __name__ == "__main__":
 
     while not board.winner:
         move = white.get_move()
-        board.apply_move(move, True)
-        board.print_char_state()
-        print(move)
-        print()
-        if not board.winner:
-            move = black.get_move()
-            board.apply_move(move, False)
+        if move:
+            board.apply_move(move)
             board.print_char_state()
             print(move)
             print()
+        if not board.winner:
+            move = black.get_move()
+            if move:
+                board.apply_move(move)
+                board.print_char_state()
+                print(move)
+                print()
     print("winner: " + board.winner)

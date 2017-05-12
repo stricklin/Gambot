@@ -65,14 +65,32 @@ class Board:
         """sums the values of the piece lists and gets the difference. side on move - other side"""
         white_value = 0
         black_value = 0
-        for piece in self.white_piece_list:
-            white_value += self.piece_value[piece[1]]
-        for piece in self.black_piece_list:
-            black_value += self.piece_value[piece[1].upper()]
-        if self.whites_turn:
-            return white_value - black_value
-        else:
-            return black_value - white_value
+        # TODO: this seems like it could be done better
+        if self.winner is None:
+            white_value = 0
+            black_value = 0
+            for piece in self.white_piece_list:
+                white_value += self.piece_value[piece[1]]
+            for piece in self.black_piece_list:
+                black_value += self.piece_value[piece[1].upper()]
+            if self.whites_turn:
+                return white_value - black_value
+            else:
+                return black_value - white_value
+        elif self.winner == "draw":
+            return 0
+        elif self.winner == "white":
+            if self.whites_turn:
+                return 10000
+            else:
+                return -10000
+        elif self.winner == "black":
+            if not self.whites_turn:
+                return 10000
+            else:
+                return -10000
+        # this function should never get here
+        assert False
 
     def get_pieces(self):
         """Walks the board and adds each piece to the correct piece list"""
@@ -134,14 +152,17 @@ class Board:
             print(line)
         print()
 
-        # TODO: fix incremental evaluator
-        # print(self.value)
-        # if self.get_value() != self.value:
-            # print("ERROR: get_value = " + str(self.get_value()))
-
     def get_char_state(self):
         """returns a character representation of the state"""
         state = []
+        # get the turn info
+        turn_info = str(self.turn_count)
+        if self.whites_turn:
+            turn_info += " W"
+        else:
+            turn_info += " B"
+        state.append(turn_info)
+
         # convert numpy_board to char Board
         for r in range(self.row_count):
             row = ""
@@ -149,15 +170,30 @@ class Board:
                 row += self.num_to_char_piece[self.numpy_board[r][c]]
             state.append(row)
 
-        # attach the turn info
-        turn_info = str(self.turn_count)
-        if self.whites_turn:
-            turn_info += " W"
-        else:
-            turn_info += " B"
-        state.insert(0, turn_info)
-
+        # get the board value
+        state.append(str(self.value))
         return state
+
+    def win(self):
+        self.value = 10000
+        if self.whites_turn:
+            self.winner = "white"
+        else:
+            self.winner = "black"
+
+    def lose(self):
+        self.value = -10000
+        if self.whites_turn:
+            self.winner = "black"
+        else:
+            self.winner = "white"
+
+    def draw(self):
+        self.value = 0
+        self.winner = "draw"
+
+
+
 
     def apply_move(self, move):
         """
@@ -171,41 +207,39 @@ class Board:
         # remove captured piece
         if move[2]:
             captured_piece = self.pick_up_piece(move[1])
-        # pick up piece
-        piece = self.pick_up_piece(move[0])
-        # put down piece
-        self.place_piece(move[1], piece)
-        # promote pawns
-        promoted_piece = self.check_for_promotion(self.whites_turn)
         # update value and check for win by capture
         if captured_piece:
             # if a king was taken, win the game
             if captured_piece.upper() == "K":
-                if self.whites_turn:
-                    self.winner = "White"
-                else:
-                    self.winner = "Black"
-                self.value = 10000
+                self.win()
             else:
                 self.value += self.piece_value[captured_piece.upper()]
+
+        # pick up piece
+        piece = self.pick_up_piece(move[0])
+        # put down piece
+        self.place_piece(move[1], piece)
+
+        # promote pawns
+        promoted_piece = self.check_for_promotion()
         if promoted_piece:
             self.value += self.piece_value['Q']
             self.value -= self.piece_value['P']
         # update turn counter, switch sides, and flip value
         if not self.whites_turn:
             self.turn_count += 1
-        if self.turn_count > 40:
-            if self.winner is None:
-                self.winner = "draw"
-                self.value = 0
+            # check for draw
+            if self.turn_count > 40:
+                if self.winner is None:
+                    self.draw()
         self.whites_turn = not self.whites_turn
         self.value = -self.value
         return captured_piece, promoted_piece,
 
-    def check_for_promotion(self, is_white: bool):
+    def check_for_promotion(self):
         # TODO: check for promotion in the moves generated to save scanning the piece lists
         promoted = False
-        if is_white:
+        if self.whites_turn:
             for piece in self.white_piece_list:
                 if piece[0][0] == 0 and piece[1] == "P":
                     self.pick_up_piece(piece[0])
@@ -219,16 +253,24 @@ class Board:
                     promoted = True
         return promoted
 
-    def undo_move(self, move, captured_piece, promoted_piece):
-        # update turn counter and switch sides
+    def undo_move(self, move, captured_piece, promoted_piece: bool):
+        # TODO: there is extra information here, captured piece is inside move
+        """
+        changes the games state to what it was before the move was applied
+        :param move: The move to undo (src, dest, captured, piece_captured)
+        :param captured_piece: The char_rep of the piece captured
+        :param promoted_piece: If a piece was promoted 
+        :return: 
+        """
+        # update turn counter and  switch sides
         if self.whites_turn:
             self.turn_count -= 1
         assert self.turn_count >= 0
         self.whites_turn = not self.whites_turn
+        self.value = -self.value
 
         # undo the end of a game
         if self.winner is not None:
-            # reset value if drawn
             self.winner = None
             self.value = self.get_value()
 
@@ -246,8 +288,8 @@ class Board:
         self.place_piece(move[0], piece)
         # replace captured piece
         if move[2]:
-            self.place_piece(captured_piece[0], captured_piece[2])
-            self.value += self.piece_value[captured_piece[2].upper()]
+            self.place_piece(move[1], captured_piece)
+            self.value -= self.piece_value[captured_piece.upper()]
 
     def move_is_legal(self, move):
         # TODO make this assertion
