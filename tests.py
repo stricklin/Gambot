@@ -33,27 +33,27 @@ class StartingBoard(unittest.TestCase):
     numpy_board = np.array
     turn_count = 0
     whites_turn = True
-    white_piece_list = [(4, 0, "P"),
-                        (4, 1, "P"),
-                        (4, 2, "P"),
-                        (4, 3, "P"),
-                        (4, 4, "P"),
-                        (5, 0, "R"),
-                        (5, 1, "N"),
-                        (5, 2, "B"),
-                        (5, 3, "Q"),
-                        (5, 4, "K"),
+    white_piece_list = [((4, 0), "P"),
+                        ((4, 1), "P"),
+                        ((4, 2), "P"),
+                        ((4, 3), "P"),
+                        ((4, 4), "P"),
+                        ((5, 0), "R"),
+                        ((5, 1), "N"),
+                        ((5, 2), "B"),
+                        ((5, 3), "Q"),
+                        ((5, 4), "K"),
                         ]
-    black_piece_list = [(0, 0, "k"),
-                        (0, 1, "q"),
-                        (0, 2, "b"),
-                        (0, 3, "n"),
-                        (0, 4, "r"),
-                        (1, 0, "p"),
-                        (1, 1, "p"),
-                        (1, 2, "p"),
-                        (1, 3, "p"),
-                        (1, 4, "p"),
+    black_piece_list = [((0, 0), "k"),
+                        ((0, 1), "q"),
+                        ((0, 2), "b"),
+                        ((0, 3), "n"),
+                        ((0, 4), "r"),
+                        ((1, 0), "p"),
+                        ((1, 1), "p"),
+                        ((1, 2), "p"),
+                        ((1, 3), "p"),
+                        ((1, 4), "p"),
                         ]
 
     def test_board_read(self):
@@ -86,9 +86,9 @@ class PawnTest(unittest.TestCase):
             "P.P.P",
             ".....",
             ]
-    p1 = (4, 0, "P")
-    p2 = (4, 2, "P")
-    p3 = (4, 4, "P")
+    p1 = ((4, 0), "P")
+    p2 = ((4, 2), "P")
+    p3 = ((4, 4), "P")
 
     p1_moves = [
         ((4, 0), (3, 0), False, '.'),
@@ -274,27 +274,27 @@ class StartingBoard(unittest.TestCase):
             ".....",
             "PPPPP",
             "RNBQK"]
-    white_piece_list = [(4, 0, "P"),
-                        (4, 1, "P"),
-                        (4, 2, "P"),
-                        (4, 3, "P"),
-                        (4, 4, "P"),
-                        (5, 0, "R"),
-                        (5, 1, "N"),
-                        (5, 2, "B"),
-                        (5, 3, "Q"),
-                        (5, 4, "K"),
+    white_piece_list = [((4, 0), "P"),
+                        ((4, 1), "P"),
+                        ((4, 2), "P"),
+                        ((4, 3), "P"),
+                        ((4, 4), "P"),
+                        ((5, 0), "R"),
+                        ((5, 1), "N"),
+                        ((5, 2), "B"),
+                        ((5, 3), "Q"),
+                        ((5, 4), "K"),
                         ]
-    black_piece_list = [(0, 0, "k"),
-                        (0, 1, "q"),
-                        (0, 2, "b"),
-                        (0, 3, "n"),
-                        (0, 4, "r"),
-                        (1, 0, "p"),
-                        (1, 1, "p"),
-                        (1, 2, "p"),
-                        (1, 3, "p"),
-                        (1, 4, "p"),
+    black_piece_list = [((0, 0), "k"),
+                        ((0, 1), "q"),
+                        ((0, 2), "b"),
+                        ((0, 3), "n"),
+                        ((0, 4), "r"),
+                        ((1, 0), "p"),
+                        ((1, 1), "p"),
+                        ((1, 2), "p"),
+                        ((1, 3), "p"),
+                        ((1, 4), "p"),
                         ]
 
     moves = [
@@ -356,11 +356,9 @@ class Promotion(unittest.TestCase):
         board = State.Board(self.init)
         move_generator = MoveGenerator(board)
         move = move_generator.get_moves()[0]
-        board.apply_move(move, True)
-        foo = board.get_char_state()
+        board.apply_move(move)
         assert self.after == board.get_char_state()
         board.undo_move(move, None, True)
-        foo = board.get_char_state()
         assert self.init == board.get_char_state()
 
 class Turn40Win(unittest.TestCase):
@@ -376,7 +374,9 @@ class Turn40Win(unittest.TestCase):
 
     def test_win(self):
         board = State.Board(self.init)
-        board.apply_move(self.move, False)
+        foo = board.get_char_state()
+        board.apply_move(self.move)
+        foo = board.get_char_state()
         assert  self.winner == board.winner
 
 

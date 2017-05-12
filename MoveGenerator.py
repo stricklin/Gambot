@@ -10,24 +10,29 @@ class MoveGenerator:
         self.moves = self.get_moves()
 
     def get_pieces(self):
+        """gets the piece of the side on move"""
         if self.board.whites_turn:
             return self.board.white_piece_list
         else:
             return self.board.black_piece_list
 
     def get_moves(self):
+        """gets all the moves for all the pieces"""
         moves = []
         for piece in self.pieces:
             moves += self.get_pieces_moves(piece)
         return moves
 
     def get_pieces_moves(self, piece):
+        """gets all the moves for a piece"""
         moves = []
-        r = piece[0]
-        c = piece[1]
-        char_rep = piece[2].upper()
+        r = piece[0][0]
+        c = piece[0][1]
+        char_rep = piece[1].upper()
 
+        # add the moves based on what kind of piece it is
         if char_rep == "P":
+            # set the forward direction
             if self.board.whites_turn:
                 f = -1
             else:
@@ -37,27 +42,29 @@ class MoveGenerator:
             moves += self.scan(r, c, f, 1, True, True, True)
 
         elif char_rep == "N":
-            moves += self.symscan(r, c, 2, 1, True, True, False)
-            moves += self.symscan(r, c, 1, 2, True, True, False)
+            moves += self.symscan(r, c, 2, 1, True, True)
+            moves += self.symscan(r, c, 1, 2, True, True)
 
         elif char_rep == "B":
-            moves += self.symscan(r, c, 1, 1, False, True, False)
-            moves += self.symscan(r, c, 0, 1, True, False, False)
+            moves += self.symscan(r, c, 1, 1, False, True)
+            moves += self.symscan(r, c, 0, 1, True, False)
 
         elif char_rep == "R":
-            moves += self.symscan(r, c, 0, 1, False, True, False)
+            moves += self.symscan(r, c, 0, 1, False, True)
 
         elif char_rep == "Q":
-            moves += self.symscan(r, c, 0, 1, False, True, False)
-            moves += self.symscan(r, c, 1, 1, False, True, False)
+            moves += self.symscan(r, c, 0, 1, False, True)
+            moves += self.symscan(r, c, 1, 1, False, True)
 
         elif char_rep == "K":
-            moves += self.symscan(r, c, 0, 1, True, True, False)
-            moves += self.symscan(r, c, 1, 1, True, True, False)
+            moves += self.symscan(r, c, 0, 1, True, True)
+            moves += self.symscan(r, c, 1, 1, True, True)
 
         return moves
 
-    def scan(self, r, c, tr, tc, short, can_capture, must_capture):
+    def scan(self, r, c, tr, tc, short, can_capture, must_capture=False):
+        """looks at all the squares projected in the direction"""
+        # TODO: This is cludgdy
         if not self.check_bounds(r + tr, c + tc):
             return []
         if tr == 0:
@@ -107,7 +114,7 @@ class MoveGenerator:
             return False
         return True
 
-    def symscan(self, r, c, tr, tc, short, can_capture, must_capture):
+    def symscan(self, r, c, tr, tc, short, can_capture, must_capture=False):
         moves = list()
         moves += self.scan(r, c, tr, tc, short, can_capture, must_capture)
         moves += self.scan(r, c, -tc, tr, short, can_capture, must_capture)

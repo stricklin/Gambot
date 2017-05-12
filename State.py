@@ -46,17 +46,14 @@ class Board:
                             "B": 300,
                             "R": 400,
                             "Q": 500,
-                            "K": 9999999,
+                            "K": 0,
                             }
 
-        # Set up piece lists
+        # Set up piece lists and numpy board
         self.white_piece_list = []
         self.black_piece_list = []
+        self.numpy_board = np.zeros((6, 5))
         self.get_pieces()
-
-        # Set up matrix representation of the board
-        self.numpy_board = []
-        self.init_numpy_board()
 
         # Set done flag
         self.winner = None
@@ -65,12 +62,13 @@ class Board:
         self.value = self.get_value()
 
     def get_value(self):
+        """sums the values of the piece lists and gets the difference. side on move - other side"""
         white_value = 0
         black_value = 0
         for piece in self.white_piece_list:
-            white_value += self.piece_value[piece[2]]
+            white_value += self.piece_value[piece[1]]
         for piece in self.black_piece_list:
-            black_value += self.piece_value[piece[2].upper()]
+            black_value += self.piece_value[piece[1].upper()]
         if self.whites_turn:
             return white_value - black_value
         else:
@@ -82,54 +80,64 @@ class Board:
             for c in range(self.col_count):
                 square = self.char_board[r][c]
                 if square != ".":
-                    if square.isupper():
-                        self.append_to_piece_list(r, c, square, True)
-                    else:
-                        self.append_to_piece_list(r, c, square, False)
+                        self.place_piece((r, c), square)
 
-    def append_to_piece_list(self, r, c, piece, is_white: bool):
-        """Puts a piece into it's piece list"""
-        if is_white:
-            self.white_piece_list.append((r, c, piece))
+    def place_piece(self, cords, piece):
+        """
+        Puts a piece into it's piece list and onto the numpy board
+        :param cords: cordinates for where the piece should go
+        :param piece: the char_rep of the piece
+        :return: 
+        """
+        # TODO: DRY
+        if piece.isupper():
+            self.white_piece_list.append((cords, piece))
+            self.numpy_board[cords] = self.char_to_num_piece[piece]
         else:
-            self.black_piece_list.append((r, c, piece))
+            self.black_piece_list.append((cords, piece))
+            self.numpy_board[cords] = self.char_to_num_piece[piece]
 
-    def remove_from_piece_list(self, r, c, is_white: bool):
+    def pick_up_piece(self, cords):
+        """
+        Takes a piece out of the piece list and updates the numpy board
+        :param cords: the cordinates where the piece is on the numpy board
+        :return: the char_rep of the picked up piece
+        """
+        # removed is a flag to make sure that a piece is actually getting picked up
         removed = False
         target_piece = None
+        # see if the piece is black or white
+        char_piece = self.num_to_char_piece[self.numpy_board[cords]]
+        is_white = char_piece.isupper()
+        # TODO: This could be more DRY
         if is_white:
             for piece in self.white_piece_list:
-                if piece[0] == r and piece[1] == c:
-                    target_piece = piece
+                if piece[0] == cords:
+                    target_piece = piece[1]
                     self.white_piece_list.remove(piece)
+                    self.numpy_board[cords] = 0
                     removed = True
         else:
             for piece in self.black_piece_list:
-                if piece[0] == r and piece[1] == c:
-                    target_piece = piece
+                if piece[0] == cords:
+                    target_piece = piece[1]
                     self.black_piece_list.remove(piece)
+                    self.numpy_board[cords] = 0
                     removed = True
         assert removed is True
         return target_piece
 
-    def init_numpy_board(self):
-        """Makes a matrix and puts number representations of pieces into it"""
-        self.numpy_board = np.zeros((self.row_count, self.col_count))
-        for piece in self.white_piece_list + self.black_piece_list:
-            self.insert_into_numpy_board(piece)
-
-    def insert_into_numpy_board(self, piece):
-        """Puts a piece into the numpy board"""
-        r = piece[0]
-        c = piece[1]
-        char_rep = piece[2]
-        num_rep = self.char_to_num_piece[char_rep]
-        self.numpy_board[r][c] = num_rep
-
     def print_char_state(self):
+        """prints the state of the board to stdout"""
         char_state = self.get_char_state()
         for line in char_state:
             print(line)
+        print()
+
+        # TODO: fix incremental evaluator
+        # print(self.value)
+        # if self.get_value() != self.value:
+            # print("ERROR: get_value = " + str(self.get_value()))
 
     def get_char_state(self):
         """returns a character representation of the state"""
@@ -151,28 +159,35 @@ class Board:
 
         return state
 
-    def apply_move(self, move, is_white: bool):
+    def apply_move(self, move):
+        """
+        applies a move to the board
+        :param move: the move to apply, is of form (src, dest, char_rep of piece) where src and dest are both (r, c)
+        :return: None
+        """
+        # TODO: make this assertion work if it can be done cheaply
         assert self.move_is_legal(move)
         captured_piece = None
-        # pick up piece
-        piece = self.remove_from_piece_list(move[0][0], move[0][1], is_white)
-        self.numpy_board[move[0][0]][move[0][1]] = 0
-        # put down piece
-        self.append_to_piece_list(move[1][0], move[1][1], piece[2], is_white)
-        self.numpy_board[move[1][0]][move[1][1]] = self.char_to_num_piece[piece[2]]
-        # promote pawns
-        promoted_piece = self.check_for_promotion(is_white)
         # remove captured piece
         if move[2]:
-            captured_piece = self.remove_from_piece_list(move[1][0], move[1][1], not is_white)
-        # update value
+            captured_piece = self.pick_up_piece(move[1])
+        # pick up piece
+        piece = self.pick_up_piece(move[0])
+        # put down piece
+        self.place_piece(move[1], piece)
+        # promote pawns
+        promoted_piece = self.check_for_promotion(self.whites_turn)
+        # update value and check for win by capture
         if captured_piece:
-            if captured_piece[2].upper() == "K":
-                if is_white:
+            # if a king was taken, win the game
+            if captured_piece.upper() == "K":
+                if self.whites_turn:
                     self.winner = "White"
                 else:
                     self.winner = "Black"
-            self.value += self.piece_value[captured_piece[2].upper()]
+                self.value = 10000
+            else:
+                self.value += self.piece_value[captured_piece.upper()]
         if promoted_piece:
             self.value += self.piece_value['Q']
             self.value -= self.piece_value['P']
@@ -182,28 +197,25 @@ class Board:
         if self.turn_count > 40:
             if self.winner is None:
                 self.winner = "draw"
+                self.value = 0
         self.whites_turn = not self.whites_turn
         self.value = -self.value
         return captured_piece, promoted_piece,
 
     def check_for_promotion(self, is_white: bool):
-        # TODO: check for promotion in the moves generated
+        # TODO: check for promotion in the moves generated to save scanning the piece lists
         promoted = False
         if is_white:
             for piece in self.white_piece_list:
-                if piece[0] == 0 and piece[2] == "P":
-                    self.white_piece_list.remove(piece)
-                    piece = (piece[0], piece[1], "Q")
-                    self.white_piece_list.append(piece)
-                    self.numpy_board[piece[0]][piece[1]] = 5
+                if piece[0][0] == 0 and piece[1] == "P":
+                    self.pick_up_piece(piece[0])
+                    self.place_piece(piece[0], "Q")
                     promoted = True
         else:
             for piece in self.black_piece_list:
-                if piece[0] == 5 and piece[2] == "p":
-                    self.black_piece_list.remove(piece)
-                    piece = (piece[0], piece[1], "q")
-                    self.black_piece_list.append(piece)
-                    self.numpy_board[piece[0]][piece[1]] = -5
+                if piece[0][0] == 5 and piece[1] == "p":
+                    self.pick_up_piece(piece[0])
+                    self.place_piece(piece[0], 'q')
                     promoted = True
         return promoted
 
@@ -214,22 +226,28 @@ class Board:
         assert self.turn_count >= 0
         self.whites_turn = not self.whites_turn
 
+        # undo the end of a game
+        if self.winner is not None:
+            # reset value if drawn
+            self.winner = None
+            self.value = self.get_value()
+
         # pick up piece
-        piece = self.remove_from_piece_list(move[1][0], move[1][1], self.whites_turn)
-        self.numpy_board[move[1][0]][move[1][1]] = 0
+        piece = self.pick_up_piece(move[1])
         # undo promotion
         if promoted_piece:
             if self.whites_turn:
-                piece = (piece[0], piece[1], "P")
+                piece = "P"
             else:
-                piece = (piece[0], piece[1], "p")
+                piece = "p"
+            self.value -= self.piece_value['Q']
+            self.value += self.piece_value['P']
         # put down piece
-        self.append_to_piece_list(move[0][0], move[0][1], piece[2], self.whites_turn)
-        self.numpy_board[move[0][0]][move[0][1]] = self.char_to_num_piece[piece[2]]
+        self.place_piece(move[0], piece)
         # replace captured piece
         if move[2]:
-            self.append_to_piece_list(captured_piece[0], captured_piece[1], captured_piece[2], captured_piece[3])
-            self.numpy_board[move[1][0]][1][1] = self.char_to_num_piece[captured_piece]
+            self.place_piece(captured_piece[0], captured_piece[2])
+            self.value += self.piece_value[captured_piece[2].upper()]
 
     def move_is_legal(self, move):
         # TODO make this assertion
