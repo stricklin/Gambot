@@ -63,17 +63,7 @@ class StartingBoard(unittest.TestCase):
         assert self.whites_turn == game_state.whites_turn
         assert self.white_piece_list == game_state.white_piece_list
         assert self.black_piece_list == game_state.black_piece_list
-        assert self.init == game_state.get_char_state()
-
-
-class Promotion:
-    init = ["0 W",
-            ".....",
-            ".P...",
-            ".....",
-            ".....",
-            ".....",
-            "....."]
+        assert self.init == game_state.get_char_state_val()
 
 
 class PawnTest(unittest.TestCase):
@@ -177,6 +167,7 @@ class BishopTest(unittest.TestCase):
         move_generator = MoveGenerator(game_state)
         assert set(self.B_moves) == set(move_generator.moves)
 
+
 class RookTest(unittest.TestCase):
     init = ["0 W",
             "..k..",
@@ -202,6 +193,7 @@ class RookTest(unittest.TestCase):
         game_state = State.Board(self.init)
         move_generator = MoveGenerator(game_state)
         assert set(self.R_moves) == set(move_generator.moves)
+
 
 class QueenTest(unittest.TestCase):
     init = ["0 W",
@@ -238,7 +230,7 @@ class QueenTest(unittest.TestCase):
         assert set(self.Q_moves) == set(move_generator.moves)
 
 
-class King(unittest.TestCase):
+class KingTest(unittest.TestCase):
     init = ["0 W",
             ".....",
             ".p.p.",
@@ -263,70 +255,6 @@ class King(unittest.TestCase):
         game_state = State.Board(self.init)
         move_generator = MoveGenerator(game_state)
         assert set(self.K_moves) == set(move_generator.moves)
-
-
-class StartingBoard(unittest.TestCase):
-    init = ["0 W",
-            "kqbnr",
-            "ppppp",
-            ".....",
-            ".....",
-            "PPPPP",
-            "RNBQK"]
-    white_piece_list = [((4, 0), "P"),
-                        ((4, 1), "P"),
-                        ((4, 2), "P"),
-                        ((4, 3), "P"),
-                        ((4, 4), "P"),
-                        ((5, 0), "R"),
-                        ((5, 1), "N"),
-                        ((5, 2), "B"),
-                        ((5, 3), "Q"),
-                        ((5, 4), "K"),
-                        ]
-    black_piece_list = [((0, 0), "k"),
-                        ((0, 1), "q"),
-                        ((0, 2), "b"),
-                        ((0, 3), "n"),
-                        ((0, 4), "r"),
-                        ((1, 0), "p"),
-                        ((1, 1), "p"),
-                        ((1, 2), "p"),
-                        ((1, 3), "p"),
-                        ((1, 4), "p"),
-                        ]
-
-    moves = [
-        ((4, 0), (3, 0), False, '.'),
-        ((4, 1), (3, 1), False, '.'),
-        ((4, 2), (3, 2), False, '.'),
-        ((4, 3), (3, 3), False, '.'),
-        ((4, 4), (3, 4), False, '.'),
-        ((5, 1), (3, 0), False, '.'),
-        ((5, 1), (3, 2), False, '.')
-    ]
-
-    def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = move_generator.moves
-        assert set(self.moves) == set(move_generator.moves)
-
-    def test_evaluator(self):
-        # set up players
-        board = State.Board(self.init)
-        white = Player.Negamax(board, True, 1, True)
-        black = Player.Negamax(board, False, 1, True)
-        # play game
-        while not board.winner:
-            move = white.get_move()
-            board.apply_move(move)
-            assert board.value == board.get_value()
-            if not board.winner:
-                move = black.get_move()
-                board.apply_move(move)
-                assert board.value == board.get_value()
-        print("winner: " + board.winner)
 
 
 class AutoTest(unittest.TestCase):
@@ -383,11 +311,9 @@ class Promotion(unittest.TestCase):
         move_generator = MoveGenerator(board)
         move = move_generator.get_moves()[0]
         board.apply_move(move)
-        foo = board.get_char_state()
-        assert self.after == board.get_char_state()
+        assert self.after == board.get_char_state_val()
         board.undo_move(move, None, True)
-        foo = board.get_char_state()
-        assert self.before == board.get_char_state()
+        assert self.before == board.get_char_state_val()
 
 
 class Turn40Win(unittest.TestCase):
@@ -406,6 +332,76 @@ class Turn40Win(unittest.TestCase):
         board.apply_move(self.move)
         assert  self.winner == board.winner
 
+
+class StartingBoard(unittest.TestCase):
+    init = ["0 W",
+            "kqbnr",
+            "ppppp",
+            ".....",
+            ".....",
+            "PPPPP",
+            "RNBQK"]
+    white_piece_list = [((4, 0), "P"),
+                        ((4, 1), "P"),
+                        ((4, 2), "P"),
+                        ((4, 3), "P"),
+                        ((4, 4), "P"),
+                        ((5, 0), "R"),
+                        ((5, 1), "N"),
+                        ((5, 2), "B"),
+                        ((5, 3), "Q"),
+                        ((5, 4), "K"),
+                        ]
+    black_piece_list = [((0, 0), "k"),
+                        ((0, 1), "q"),
+                        ((0, 2), "b"),
+                        ((0, 3), "n"),
+                        ((0, 4), "r"),
+                        ((1, 0), "p"),
+                        ((1, 1), "p"),
+                        ((1, 2), "p"),
+                        ((1, 3), "p"),
+                        ((1, 4), "p"),
+                        ]
+
+    moves = [
+        ((4, 0), (3, 0), False, '.'),
+        ((4, 1), (3, 1), False, '.'),
+        ((4, 2), (3, 2), False, '.'),
+        ((4, 3), (3, 3), False, '.'),
+        ((4, 4), (3, 4), False, '.'),
+        ((5, 1), (3, 0), False, '.'),
+        ((5, 1), (3, 2), False, '.')
+    ]
+
+    def test_moves(self):
+        game_state = State.Board(self.init)
+        move_generator = MoveGenerator(game_state)
+        assert set(self.moves) == set(move_generator.moves)
+
+    @staticmethod
+    def play_game(board, white, black):
+        # play game
+        while not board.winner:
+            move = white.get_move()
+            board.apply_move(move)
+            if not board.winner:
+                move = black.get_move()
+                board.apply_move(move)
+        print("winner: " + board.winner)
+
+    def test_evaluator(self):
+        # set up players
+        board = State.Board(self.init)
+        white = Player.Negamax(board, True, 2, True)
+        black = Player.Negamax(board, False, 2, True)
+        self.play_game(board, white, black)
+
+    def test_alpha_beta(self):
+        board = State.Board(self.init)
+        white = Player.AlphaBeta(board, True, 2, True)
+        black = Player.AlphaBeta(board, False, 2, True)
+        self.play_game(board, white, black)
 
 if __name__ == "__main__":
     unittest.main()

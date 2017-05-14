@@ -125,7 +125,9 @@ class Board:
         removed = False
         target_piece = None
         # see if the piece is black or white
-        char_piece = self.num_to_char_piece[self.numpy_board[cords]]
+        # TODO: this is where to break
+        num_piece = self.numpy_board[cords]
+        char_piece = self.num_to_char_piece[num_piece]
         is_white = char_piece.isupper()
         # TODO: This could be more DRY
         if is_white:
@@ -170,8 +172,14 @@ class Board:
                 row += self.num_to_char_piece[self.numpy_board[r][c]]
             state.append(row)
 
+        return state
+
+    def get_char_state_val(self):
+        """returns a character representation of the state with value"""
+        state = self.get_char_state()
         # get the board value
         state.append(str(self.value))
+
         return state
 
     def win(self):
@@ -191,9 +199,6 @@ class Board:
     def draw(self):
         self.value = 0
         self.winner = "draw"
-
-
-
 
     def apply_move(self, move):
         """
