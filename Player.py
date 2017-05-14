@@ -3,6 +3,7 @@ from MoveGenerator import MoveGenerator
 import random
 import socket
 import time
+import copy
 
 
 class Player:
@@ -203,6 +204,7 @@ class Net(Player):
         self.port = 3589
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.logfile_name = "net_logs/" + str(time.strftime("%c"))
+        self.first_move = None
 
         # make connection
         self.sock.connect((self.host, self.port))
@@ -245,7 +247,7 @@ class Net(Player):
         # read in block
         message_block = self.read_lines(4)
         # parse block
-        char_move = message_block[0].split()[1]
+        char_move = message_block[0]
         board = message_block[2].split("\n")
         time = message_block[3]
         # check board
@@ -258,6 +260,44 @@ class Net(Player):
         # return move
         move = self.char_move_to_move(char_move)
         return move
+
+    def read_games(self):
+        # new sockfiles are created here to escape logging unneeded things like:
+        #   asking for games and not getting any
+        #   asking for games and only getting the wrong type
+        # the game list that includes the game returned is manually logged at the end
+        self.log("list")
+        games = []
+        while not games:
+            # for logging
+            original_games = []
+
+            # ask for games
+            sockfile = self.sock.makefile(mode="w", newline="\n")
+            sockfile.write("list" + "\n")
+            sockfile.close()
+
+            # read games
+            sockfile = self.sock.makefile(mode="r", newline="\r\n")
+            line = None
+            while line != '.':
+                line = sockfile.readline().strip("\r\n")
+                if "available" not in line and "." not in line:
+                    original_games.append(line)
+            sockfile.close()
+            games = copy.deepcopy(original_games)
+
+            # remove games of wrong type
+            for game in games:
+                if self.is_white:
+                    if game.split()[2] != "W":
+                        games.remove(game)
+                else:
+                    if game.split()[2] != "B":
+                        games.remove(game)
+        for game in original_games:
+            self.log(game)
+        return games
 
     def log(self, text):
         logfile = open(self.logfile_name, mode="a")
@@ -282,51 +322,45 @@ class Net(Player):
         here it is flipped because the net player presents different sides to the program and the outside
         :return: 
         """
-        if self.is_white:
-            self.write("offer b")
-        else:
+        if not self.is_white:
             self.write("offer w")
-            offerline_gamestart_firstbord = self.read_lines(5)
-            #prelude = self.read_lines(4)
+            prelude = self.read_lines(5)
+        else:
+            self.write("offer b")
+            # this prelude includes the first move
+            prelude = self.read_lines(6)
+            # todo: explain why the below is needed
+            self.first_move = self.char_move_to_move(prelude[2])
+            pass
 
     def accept(self):
-        self.write("list")
-        # todo: getting the lines this way will probably not work, because the games are probably sent with the accept line all at once
-        number_of_games = self.read_line.split()[2]
-        # wait until there are games
-        while number_of_games == 0:
-            time.sleep(5)
-            self.write("list")
-            number_of_games = self.read_lines().split()[2]
         # read the games
-        games = []
-        for game in range(len(number_of_games)):
-            games.append(self.read_lines())
-        # take out the games offering the wrong side
-        for game in games:
-            if self.is_white:
-                # TODO: none of this has run, it could all be wrong
-                if game.split()[2] != "B":
-                    games.remove(game)
-            else:
-                if game.split()[2] != "W":
-                    games.remove(game)
-        if games:
-            game_index = games[0].split()[0]
-            self.write("accept " + game_index)
+        games = self.read_games()
+        game_number = games[0].split()[0]
+        self.write("accept " + game_number)
+        if not self.is_white:
+            prelude = self.read_lines(4)
         else:
-            # try again
-            time.sleep(5)
-            self.accept()
+            # this prelude includes the first move
+            prelude = self.read_lines(5)
+            # todo: explain why the below is needed
+            self.first_move = self.char_move_to_move(prelude[1])
+
 
     def get_moves(self):
-        # send the move that the opponent just made
-        self.write(MoveGenerator.move_to_char_move(self.board.last_move))
-        # get the new move
-        move = self.read_move()
+        # this only happens when Net is white
+        if self.first_move:
+            move = self.first_move
+            self.first_move = None
+        else:
+            # send the move that the opponent just made
+            self.write(MoveGenerator.move_to_char_move(self.board.last_move))
+            # get the new move
+            move = self.read_move()
         return [move]
 
     def char_move_to_move(self, char_move):
+        char_move = char_move.split()[1]
         src, dest = MoveGenerator.char_move_to_src_dest(char_move)
         moves = MoveGenerator(self.board).get_moves()
         for move in moves:
