@@ -21,6 +21,9 @@ class Player:
             best_moves, val, vals = self.get_moves()
         else:
             best_moves = self.get_moves()
+        # if the game is over, return none
+        if not best_moves:
+            return None
         if not self.testing:
             random.shuffle(best_moves)
         return best_moves[0]
@@ -239,6 +242,9 @@ class Net(Player):
         sockfile = self.sock.makefile(mode="r", newline="\r\n")
         for line in range(n):
             lines.append(sockfile.readline().strip("\r\n"))
+            # if the game wasn't able to connect
+            if "408" in lines[line]:
+                exit("game didnt exsist")
         for line in lines:
             self.log(line)
         return lines
@@ -248,6 +254,17 @@ class Net(Player):
         message_block = self.read_lines(4)
         # parse block
         char_move = message_block[0]
+        # handle gameover
+        if "=" in char_move:
+            game_over = char_move.split()
+            if game_over[1] == "W":
+                self.board.win("white")
+            elif game_over[1] == "B":
+                self.board.win("black")
+            else:
+                self.board.draw()
+            move = None
+            return move
         board = message_block[2].split("\n")
         time = message_block[3]
         # check board
@@ -345,7 +362,6 @@ class Net(Player):
             prelude = self.read_lines(5)
             # todo: explain why the below is needed
             self.first_move = self.char_move_to_move(prelude[1])
-
 
     def get_moves(self):
         # this only happens when Net is white

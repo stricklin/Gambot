@@ -91,7 +91,8 @@ if __name__ == "__main__":
     while not board.winner:
         start = time.time()
         move = white.get_move()
-        board.apply_move(move)
+        if move:
+            board.apply_move(move)
         # save the last  move applied so that net players can grab it
         board.last_move = move
         stop = time.time()
@@ -103,7 +104,8 @@ if __name__ == "__main__":
         if not board.winner:
             start = time.time()
             move = black.get_move()
-            board.apply_move(move)
+            if move:
+                board.apply_move(move)
             # save the last  move applied so that net players can grab it
             board.last_move = move
             stop = time.time()

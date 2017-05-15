@@ -182,12 +182,18 @@ class Board:
 
         return state
 
-    def win(self):
-        self.value = 10000
-        if self.whites_turn:
-            self.winner = "white"
+    def win(self, winner):
+        self.winner = winner
+        if self.winner == "white":
+            if self.whites_turn:
+                self.value = 10000
+            else:
+                self.value = -10000
         else:
-            self.winner = "black"
+            if not self.whites_turn:
+                self.value = 10000
+            else:
+                self.value = -10000
 
     def lose(self):
         self.value = -10000
@@ -213,8 +219,10 @@ class Board:
         # update value and check for win by capture
         if captured_piece:
             # if a king was taken, win the game
-            if captured_piece.upper() == "K":
-                self.win()
+            if captured_piece == "k":
+                self.win("white")
+            elif captured_piece == "K":
+                self.win("black")
             else:
                 self.value += self.piece_value[captured_piece.upper()]
 
