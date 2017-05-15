@@ -28,15 +28,11 @@ def make_player(arguments, board, is_white):
             testing = arguments[2] == "True"
             player = player_type_lookup[player_type](board, is_white, depth, testing)
     elif player_type in ["net"]:
-        if len(arguments) == 4:
             username = arguments[1]
             password = arguments[2]
-            offer_or_accept = arguments[3]
-            if offer_or_accept == "offer":
-                offer_or_accept = True
-            else:
-                offer_or_accept = False
-            player = player_type_lookup[player_type](board, is_white, username, password, offer_or_accept)
+            game_type = arguments[3]
+            if game_type in ["offer", "accept", "offer?", "accept?"]:
+                player = player_type_lookup[player_type](board, is_white, username, password, game_type)
     assert player
     return player
 
@@ -70,7 +66,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # read in a board from a file or load the starting board
-    if args.file and args.white[0] != "net" and args.black[0] != "net":
+    if args.file and args.white[0] != "net" and args.black[0] != "net" and args.offer == []:
         board = State.read_file(args.file)
         board = State.Board(board)
     else:
@@ -81,9 +77,28 @@ if __name__ == "__main__":
                              ".....",
                              "PPPPP",
                              "RNBQK"])
-    # set up players
-    white = make_player(args.white, board, True)
-    black = make_player(args.black, board, False)
+    if "offer?" in args.white or "offer?" in args.black:
+        if "offer?" in args.white and "offer?" in args.black:
+            exit("unable to have 2 changable type players")
+        if "offer?" in args.white:
+            offerer = make_player(args.white, board, True)
+            other = make_player(args.black, board, True)
+        else:
+            offerer = make_player(args.black, board, True)
+            other = make_player(args.white, board, True)
+        if offerer.is_white:
+            white = offerer
+            other.is_white = False
+            black = other
+        else:
+            black = offerer
+            other.is_white = True
+            white = other
+
+    else:
+        # set up players
+        white = make_player(args.white, board, True)
+        black = make_player(args.black, board, False)
     white_time = 0
     black_time = 0
 

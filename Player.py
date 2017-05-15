@@ -199,7 +199,7 @@ class AlphaBeta(Player):
 
 
 class Net(Player):
-    def __init__(self, board: Board, is_white: bool, username: str, password: str, offer: bool):
+    def __init__(self, board: Board, is_white: bool, username: str, password: str, game_type):
         Player.__init__(self, board, is_white)
         self.username = username
         self.password = password
@@ -207,6 +207,7 @@ class Net(Player):
         self.port = 3589
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.logfile_name = "net_logs/" + str(time.strftime("%c"))
+        self.game_type = game_type
         self.first_move = None
 
         # make connection
@@ -220,7 +221,7 @@ class Net(Player):
         if not self.login():
             self.register()
 
-        if offer:
+        if "offer" in game_type:
             self.offer()
         else:
             self.accept()
@@ -339,16 +340,40 @@ class Net(Player):
         here it is flipped because the net player presents different sides to the program and the outside
         :return: 
         """
-        if not self.is_white:
+        if self.game_type == "offer?":
+            self.write("offer")
+            sockfile = self.sock.makefile(mode="r", newline="\r\n")
+            lines = [sockfile.readline().strip("\r\n")]
+            # determine what color I am
+            line = sockfile.readline().strip("\r\n")
+            lines.append(line)
+            # if a game is accepted and you are white
+            if "106" in line:
+                self.is_white = True
+                prelude_size = 3
+            # if a game is accepted and you are black
+            else:
+                self.is_white = False
+                prelude_size = 2
+            for counter in range(prelude_size):
+                line = sockfile.readline().strip("\r\n")
+                lines.append(line)
+            if self.is_white:
+                self.first_move = self.char_move_to_move(lines[2])
+            sockfile.close()
+            for line in lines:
+                self.log(line)
+        # for offering black
+        elif not self.is_white:
             self.write("offer w")
             prelude = self.read_lines(5)
+        # for offering white
         else:
             self.write("offer b")
             # this prelude includes the first move
             prelude = self.read_lines(6)
             # todo: explain why the below is needed
             self.first_move = self.char_move_to_move(prelude[2])
-            pass
 
     def accept(self):
         # read the games

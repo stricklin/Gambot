@@ -125,7 +125,6 @@ class Board:
         removed = False
         target_piece = None
         # see if the piece is black or white
-        # TODO: this is where to break
         num_piece = self.numpy_board[cords]
         char_piece = self.num_to_char_piece[num_piece]
         is_white = char_piece.isupper()
