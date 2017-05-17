@@ -46,7 +46,7 @@ class Board:
                             "B": 300,
                             "R": 400,
                             "Q": 500,
-                            "K": 0,
+                            "K": 1000,
                             }
 
         # Set up piece lists and numpy board

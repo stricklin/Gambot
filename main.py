@@ -3,6 +3,12 @@ import Player
 import argparse
 import time
 
+# todo: fix disconnect after win before win is logged on the server
+#       This is happening because the game stops running when the local game wins
+# todo: change internal move representation
+# todo: add timing and interitive deepening
+#
+
 
 def make_player(arguments, board, is_white):
     player = None

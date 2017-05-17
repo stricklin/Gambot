@@ -243,9 +243,10 @@ class Net(Player):
         sockfile = self.sock.makefile(mode="r", newline="\r\n")
         for line in range(n):
             lines.append(sockfile.readline().strip("\r\n"))
+            # todo: this should go someplace else
             # if the game wasn't able to connect
-            if "408" in lines[line]:
-                exit("game didnt exsist")
+            # if "408" in lines[line]:
+                # exit("game didnt exsist")
         for line in lines:
             self.log(line)
         return lines
