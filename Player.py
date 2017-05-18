@@ -236,7 +236,7 @@ class Net(Player):
         self.sock.close()
 
     def write(self, message):
-        sockfile = self.sock.makefile(mode="w", newline="\n")
+        sockfile = self.sock.makefile(mode="w")
         sockfile.write(message + "\n")
         sockfile.close()
         self.log(message)
@@ -246,7 +246,7 @@ class Net(Player):
 
     def read_lines(self, n):
         lines = []
-        sockfile = self.sock.makefile(mode="r", newline="\r\n")
+        sockfile = self.sock.makefile(mode="r")
         for line in range(n):
             lines.append(sockfile.readline().strip("\r\n"))
             # if the game wasn't able to connect
@@ -297,12 +297,12 @@ class Net(Player):
             original_games = []
 
             # ask for games
-            sockfile = self.sock.makefile(mode="w", newline="\n")
+            sockfile = self.sock.makefile(mode="w")
             sockfile.write("list" + "\n")
             sockfile.close()
 
             # read games
-            sockfile = self.sock.makefile(mode="r", newline="\r\n")
+            sockfile = self.sock.makefile(mode="r")
             line = None
             while line != '.':
                 line = sockfile.readline().strip("\r\n")
@@ -327,6 +327,7 @@ class Net(Player):
         logfile = open(self.logfile_name, mode="a")
         logfile.write(text + "\n")
         logfile.close()
+        print text
 
     def login(self):
         self.write("me " + self.username + " " + self.password)
