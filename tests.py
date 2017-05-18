@@ -393,14 +393,14 @@ class StartingBoard(unittest.TestCase):
     def test_evaluator(self):
         # set up players
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 2, True)
-        black = Player.Negamax(board, False, 2, True)
+        white = Player.Negamax(board, True, 3, True)
+        black = Player.Negamax(board, False, 3, True)
         self.play_game(board, white, black)
 
     def test_alpha_beta(self):
         board = State.Board(self.init)
-        white = Player.AlphaBeta(board, True, 2, True)
-        black = Player.AlphaBeta(board, False, 2, True)
+        white = Player.AlphaBeta(board, True, 3, True)
+        black = Player.AlphaBeta(board, False, 3, True)
         self.play_game(board, white, black)
 
 if __name__ == "__main__":
