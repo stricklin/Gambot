@@ -12,7 +12,7 @@ def read_stdin():
 
 class Board:
 
-    def __init__(self, game_state: list):
+    def __init__(self, game_state):
         # Separate the turn info from the board and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
@@ -150,8 +150,8 @@ class Board:
         """prints the state of the board to stdout"""
         char_state = self.get_char_state()
         for line in char_state:
-            print(line)
-        print()
+            print line
+        print
 
     def get_char_state(self):
         """returns a character representation of the state"""
@@ -263,7 +263,7 @@ class Board:
                     promoted = True
         return promoted
 
-    def undo_move(self, move, captured_piece, promoted_piece: bool):
+    def undo_move(self, move, captured_piece, promoted_piece):
         # TODO: there is extra information here, captured piece is inside move
         """
         changes the games state to what it was before the move was applied

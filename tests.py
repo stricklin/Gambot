@@ -388,7 +388,7 @@ class StartingBoard(unittest.TestCase):
             if not board.winner:
                 move = black.get_move()
                 board.apply_move(move)
-        print("winner: " + board.winner)
+        print "winner: " + board.winner
 
     def test_evaluator(self):
         # set up players

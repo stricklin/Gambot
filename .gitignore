@@ -3,3 +3,4 @@ __pycache__/
 net_logs/
 other_logs/
 offer_accept_examples/
+*.pyc

@@ -7,7 +7,7 @@ import copy
 
 
 class Player:
-    def __init__(self, board: Board, is_white: bool, depth=0, testing=False):
+    def __init__(self, board, is_white, depth=0, testing=False):
         self.board = board
         self.is_white = is_white
         self.depth = depth
@@ -34,7 +34,7 @@ class Player:
 
 
 class Human(Player):
-    def __init__(self, board: Board, is_white: bool):
+    def __init__(self, board, is_white):
         Player.__init__(self, board, is_white)
 
     def get_moves(self):
@@ -43,14 +43,14 @@ class Human(Player):
         move_count = len(moves)
         selected_move = ""
         for i in range(move_count):
-            print(str(i) + ". " + MoveGenerator.move_to_char_move(moves[i]) + " " + str(moves[i]))
+            print str(i) + ". " + MoveGenerator.move_to_char_move(moves[i]) + " " + str(moves[i])
         while not selected_move.isdigit() or int(selected_move) >= move_count:
             selected_move = input("Choose which numbered move you would like to take: ")
         return [moves[int(selected_move)]]
 
 
 class Random(Player):
-    def __init__(self, board: Board, is_white: bool):
+    def __init__(self, board, is_white):
         Player.__init__(self, board, is_white)
 
     def get_moves(self):
@@ -61,7 +61,7 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board: Board, is_white: bool, depth: int, testing=False):
+    def __init__(self, board, is_white, depth, testing=False):
         Player.__init__(self, board, is_white, depth, testing)
 
     def get_moves(self):
@@ -99,7 +99,7 @@ class Negamax(Player):
             return best_moves, max_val, vals
         return best_moves
 
-    def negamax(self, depth: int):
+    def negamax(self, depth):
         # check if the game is done or depth is reached
         if depth <= 0 or self.board.winner:
             return self.board.value
@@ -123,7 +123,7 @@ class Negamax(Player):
 
 
 class AlphaBeta(Player):
-    def __init__(self, board: Board, is_white: bool, depth: int, testing=False):
+    def __init__(self, board, is_white, depth, testing=False):
         Player.__init__(self, board, is_white, depth, testing)
 
     def get_moves(self):
@@ -138,16 +138,19 @@ class AlphaBeta(Player):
         if not moves:
             self.board.lose()
             return None
+        alpha = -10000
+        beta = 10000
         for move in moves:
             # apply move
             captured_piece, promoted_piece = self.board.apply_move(move)
             # get the value of this move
             # this is the widest window possible for alpha beta
-            val = - self.alphabeta(self.depth, -10000, 10000)
+            val = - self.alphabeta(self.depth, alpha, 10000)
             # if this is a better move, remember it
             # the better move is the smallest value because its the value of the opponents turn
             if val > max_val:
                 max_val = val
+                alpha = max_val
                 best_moves = [move]
                 if self.testing:
                     vals = [val]
@@ -156,6 +159,9 @@ class AlphaBeta(Player):
                 best_moves.append(move)
                 if self.testing:
                     vals.append(val)
+            # keep track of the worst value seen
+            if val < beta:
+                beta = val
             # undo move
             self.board.undo_move(move, captured_piece, promoted_piece)
         if self.testing:
@@ -199,7 +205,7 @@ class AlphaBeta(Player):
 
 
 class Net(Player):
-    def __init__(self, board: Board, is_white: bool, username: str, password: str, game_type):
+    def __init__(self, board, is_white, username, password, game_type):
         Player.__init__(self, board, is_white)
         self.username = username
         self.password = password
@@ -215,7 +221,7 @@ class Net(Player):
         # verify connection
         welcome = self.read_line()
         if welcome != "100 imcs 2.5":
-            print("wrong version of server")
+            print "wrong version of server"
             exit()
         # login or register
         if not self.login():

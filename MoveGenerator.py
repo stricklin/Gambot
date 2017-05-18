@@ -4,7 +4,7 @@ import State as Board
 class MoveGenerator:
     # TODO: write a move sorter
 
-    def __init__(self, board: Board):
+    def __init__(self, board):
         """takes a board, gets the pieces, gets all legal moves"""
         self.board = board
         self.pieces = self.get_pieces()
