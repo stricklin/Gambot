@@ -41,12 +41,12 @@ class Board:
                                   "Q": 5, "q": -5,
                                   "K": 6, "k": -6,
                                   }
-        self.piece_value = {"P": 100,
-                            "N": 200,
+        self.piece_value = {"P": 200,
+                            "N": 75,
                             "B": 300,
-                            "R": 400,
-                            "Q": 500,
-                            "K": 0,
+                            "R": 500,
+                            "Q": 700,
+                            "K": 10000,
                             }
 
         # Set up piece lists and numpy board
