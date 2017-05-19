@@ -112,10 +112,10 @@ if __name__ == "__main__":
         board.last_move = move
         stop = time.time()
         white_time += stop - start
-        board.print_char_state()
-        print move
-        print "Time: " + str(stop - start)
-        print
+        #board.print_char_state()
+        #print move
+        #print "Time: " + str(stop - start)
+        #print
         if not board.winner:
             start = time.time()
             move = black.get_move()
@@ -126,19 +126,21 @@ if __name__ == "__main__":
             stop = time.time()
             black_time += stop - start
             board.print_char_state()
-            print move
-            print "Time: " + str(stop - start)
-            print
-    # try one last move incase
-    move = white.get_move()
-    if move:
-        board.apply_move(move)
-    move = black.get_move()
-    if move:
-        board.apply_move(move)
+            #print move
+            #print "Time: " + str(stop - start)
+            #print
+    # try one last move in case I won first
+    if board.whites_turn:
+        move = white.get_move()
+        if move:
+            board.apply_move(move)
+    else:
+        move = black.get_move()
+        if move:
+            board.apply_move(move)
 
-    print "winner: " + board.winner
+    #print "winner: " + board.winner
     game_stop = time.time()
-    print "Total time: " + str(game_stop - game_start)
-    print "White's time: " + str(white_time)
-    print "Blacks's time: " + str(black_time)
+    #print "Total time: " + str(game_stop - game_start)
+    #print "White's time: " + str(white_time)
+    #print "Blacks's time: " + str(black_time)

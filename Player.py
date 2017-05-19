@@ -132,7 +132,6 @@ class AlphaBeta(Player):
         # TODO: vals is for debug
         vals = []
         # initalize max_val to lowest possible
-        max_val = -10000
         # generate and test each move
         moves = MoveGenerator(self.board).get_moves()
         if not moves:
@@ -145,17 +144,16 @@ class AlphaBeta(Player):
             captured_piece, promoted_piece = self.board.apply_move(move)
             # get the value of this move
             # this is the widest window possible for alpha beta
-            val = - self.alphabeta(self.depth, alpha, 10000)
+            val = - self.alphabeta(self.depth, alpha, beta)
             # if this is a better move, remember it
             # the better move is the smallest value because its the value of the opponents turn
-            if val > max_val:
-                max_val = val
-                alpha = max_val
+            if val > alpha:
+                alpha = val
                 best_moves = [move]
                 if self.testing:
                     vals = [val]
             # if more than one move is best, keep them all
-            elif val == max_val:
+            elif val == alpha:
                 best_moves.append(move)
                 if self.testing:
                     vals.append(val)
@@ -166,10 +164,10 @@ class AlphaBeta(Player):
             self.board.undo_move(move, captured_piece, promoted_piece)
         if self.testing:
             # make sure that negamax and alpha beta are returning the same values
-            non_alpha_beta_moves, negamax_val, negamax_vals = Negamax(self.board, self.is_white, self.depth, True).get_moves()
-            assert set(non_alpha_beta_moves) == set(best_moves)
+            negamax_moves, negamax_val, negamax_vals = Negamax(self.board, self.is_white, self.depth, True).get_moves()
+            assert set(negamax_moves) == set(best_moves)
         if self.testing:
-            return best_moves, max_val, vals
+            return best_moves, alpha, vals
         return best_moves
 
     def alphabeta(self, depth, alpha, beta):
@@ -249,16 +247,13 @@ class Net(Player):
         sockfile = self.sock.makefile(mode="r")
         for line in range(n):
             lines.append(sockfile.readline().strip("\r\n"))
-            # if the game wasn't able to connect
-            if "408" in lines[line]:
-                exit("game didnt exsist")
         for line in lines:
             self.log(line)
         return lines
 
     def read_move(self):
         # read in block
-        message_block = self.read_lines(4)
+        message_block = self.read_lines(11)
         # parse block
         char_move = message_block[0]
         # handle gameover
@@ -314,6 +309,7 @@ class Net(Player):
             # remove games of wrong type
             for game in games:
                 if self.is_white:
+                    foo = game.split()[2]
                     if game.split()[2] != "W":
                         games.remove(game)
                 else:
@@ -361,12 +357,12 @@ class Net(Player):
             # if a game is accepted and you are black
             else:
                 self.is_white = False
-                prelude_size = 2
+                prelude_size = 12
             for counter in range(prelude_size):
                 line = sockfile.readline().strip("\r\n")
                 lines.append(line)
             if self.is_white:
-                self.first_move = self.char_move_to_move(lines[2])
+                self.first_move = self.char_move_to_move(lines[10])
             sockfile.close()
             for line in lines:
                 self.log(line)
@@ -388,11 +384,10 @@ class Net(Player):
         game_number = games[0].split()[0]
         self.write("accept " + game_number)
         if not self.is_white:
-            prelude = self.read_lines(4)
+            prelude = self.read_lines(11)
         else:
             # this prelude includes the first move
-            prelude = self.read_lines(5)
-            # todo: explain why the below is needed
+            prelude = self.read_lines(12)
             self.first_move = self.char_move_to_move(prelude[1])
 
     def get_moves(self):
@@ -402,12 +397,15 @@ class Net(Player):
             self.first_move = None
         else:
             # send the move that the opponent just made
-            self.write(MoveGenerator.move_to_char_move(self.board.last_move))
+            if self.board.last_move:
+                self.write(MoveGenerator.move_to_char_move(self.board.last_move))
             # get the new move
             move = self.read_move()
         return [move]
 
     def char_move_to_move(self, char_move):
+        if char_move == '':
+            return None
         char_move = char_move.split()[1]
         src, dest = MoveGenerator.char_move_to_src_dest(char_move)
         moves = MoveGenerator(self.board).get_moves()
