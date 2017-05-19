@@ -7,6 +7,7 @@ import time
 def make_player(arguments, board, is_white):
     player = None
     player_type = arguments[0]
+    net_player = False
     assert player_type in ["h", "r", "nega", "ab", "net"]
     # to pick the write type
     player_type_lookup = {"h": Player.Human,
@@ -28,13 +29,14 @@ def make_player(arguments, board, is_white):
             testing = arguments[2] == "True"
             player = player_type_lookup[player_type](board, is_white, depth, testing)
     elif player_type in ["net"]:
+            net_player = True
             username = arguments[1]
             password = arguments[2]
             game_type = arguments[3]
             if game_type in ["offer", "accept", "offer?", "accept?"]:
                 player = player_type_lookup[player_type](board, is_white, username, password, game_type)
     assert player
-    return player
+    return player, net_player
 
 
 if __name__ == "__main__":
@@ -97,38 +99,43 @@ if __name__ == "__main__":
 
     else:
         # set up players
-        white = make_player(args.white, board, True)
-        black = make_player(args.black, board, False)
+        white, white_net = make_player(args.white, board, True)
+        black, black_net = make_player(args.black, board, False)
     white_time = 0
     black_time = 0
+    net_dipsplay = white_net or black_net
 
     game_start = time.time()
     while not board.winner:
         start = time.time()
         move = white.get_move()
+        if not net_dipsplay:
+            board.print_char_state()
+            print move
         if move:
             board.apply_move(move)
         # save the last  move applied so that net players can grab it
         board.last_move = move
         stop = time.time()
         white_time += stop - start
-        #board.print_char_state()
-        #print move
-        #print "Time: " + str(stop - start)
-        #print
+        if not net_dipsplay:
+            print "Time: " + str(stop - start)
+            print
         if not board.winner:
             start = time.time()
             move = black.get_move()
+            if not net_dipsplay:
+                board.print_char_state()
+                print move
             if move:
                 board.apply_move(move)
             # save the last  move applied so that net players can grab it
             board.last_move = move
             stop = time.time()
             black_time += stop - start
-            board.print_char_state()
-            #print move
-            #print "Time: " + str(stop - start)
-            #print
+            if not net_dipsplay:
+                print "Time: " + str(stop - start)
+                print
     # try one last move in case I won first
     if board.whites_turn:
         move = white.get_move()
@@ -139,8 +146,9 @@ if __name__ == "__main__":
         if move:
             board.apply_move(move)
 
-    #print "winner: " + board.winner
     game_stop = time.time()
-    #print "Total time: " + str(game_stop - game_start)
-    #print "White's time: " + str(white_time)
-    #print "Blacks's time: " + str(black_time)
+    if not net_dipsplay:
+        print "winner: " + board.winner
+        print "Total time: " + str(game_stop - game_start)
+        print "White's time: " + str(white_time)
+        print "Blacks's time: " + str(black_time)

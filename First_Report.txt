@@ -1,0 +1,22 @@
+Gambot: the minichess player
+Rubin Stricklin
+Gambot is written in python2, after being written
+in python3 and being too slow and after I almost
+completed Gambot in Java. The reason that it
+performs so much better in python2 is because
+I can compile it with pypy.
+
+Gambot is able to do alphabeta at depth 4 on my
+laptop with pypy and 6 on babbage without it
+
+After I got my move generator working, I made a
+game driver along with random and human players
+so that I could better interact with Gambot. It
+was harder that I thought it would be to win
+against a random player.
+
+Then I made a material evaluation function which is
+pretty naieve. I plan on doing more tuning of piece
+values and adding a pawn stucture evaluation to it.
+But this was enough to get started on Negamax.
+

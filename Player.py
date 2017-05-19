@@ -269,11 +269,6 @@ class Net(Player):
             return move
         board = message_block[2].split("\n")
         time = message_block[3]
-        # check board
-        foo = self.board.get_char_state()
-        # todo: this check is in the wrong spot. its happening after the non net player makes a move
-        # todo: so the board looks wrong.
-        #assert set(board) == set(self.board.get_char_state())
         # update time
         # todo: update time
         # return move
