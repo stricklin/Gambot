@@ -144,7 +144,7 @@ class AlphaBeta(Player):
             captured_piece, promoted_piece = self.board.apply_move(move)
             # get the value of this move
             # this is the widest window possible for alpha beta
-            val = - self.alphabeta(self.depth, alpha, beta)
+            val = - self.alphabeta(self.depth, -10000, 10000)
             # if this is a better move, remember it
             # the better move is the smallest value because its the value of the opponents turn
             if val > alpha:

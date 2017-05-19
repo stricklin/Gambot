@@ -295,7 +295,7 @@ class Promotion(unittest.TestCase):
               ".....",
               ".....",
               ".....",
-              "100"]
+              "200"]
 
     after = ["0 B",
              "Q....",
@@ -304,7 +304,7 @@ class Promotion(unittest.TestCase):
              ".....",
              ".....",
              ".....",
-             "-500"]
+             "-700"]
 
     def test_do_undo(self):
         board = State.Board(self.init)
