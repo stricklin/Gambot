@@ -137,8 +137,7 @@ class AlphaBeta(Player):
         if not moves:
             self.board.lose()
             return None
-        alpha = -10000
-        beta = 10000
+        max_val = -10000
         for move in moves:
             # apply move
             captured_piece, promoted_piece = self.board.apply_move(move)
@@ -147,19 +146,16 @@ class AlphaBeta(Player):
             val = - self.alphabeta(self.depth, -10000, 10000)
             # if this is a better move, remember it
             # the better move is the smallest value because its the value of the opponents turn
-            if val > alpha:
-                alpha = val
+            if val > max_val:
+                max_val = val
                 best_moves = [move]
                 if self.testing:
                     vals = [val]
             # if more than one move is best, keep them all
-            elif val == alpha:
+            elif val == max_val:
                 best_moves.append(move)
                 if self.testing:
                     vals.append(val)
-            # keep track of the worst value seen
-            if val < beta:
-                beta = val
             # undo move
             self.board.undo_move(move, captured_piece, promoted_piece)
         if self.testing:
@@ -167,7 +163,7 @@ class AlphaBeta(Player):
             negamax_moves, negamax_val, negamax_vals = Negamax(self.board, self.is_white, self.depth, True).get_moves()
             assert set(negamax_moves) == set(best_moves)
         if self.testing:
-            return best_moves, alpha, vals
+            return best_moves, max_val, vals
         return best_moves
 
     def alphabeta(self, depth, alpha, beta):
