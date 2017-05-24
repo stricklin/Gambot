@@ -35,7 +35,7 @@ class Human(Player):
 
     def get_moves(self):
         # get all the moves
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         move_count = len(moves)
         selected_move = ""
         for i in range(move_count):
@@ -51,7 +51,7 @@ class Random(Player):
 
     def get_moves(self):
         assert self.is_white == self.board.whites_turn
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).move
         # the 0 and [0] are to comply with gemoves in other player classes
         return moves
 
@@ -68,7 +68,7 @@ class Negamax(Player):
         # initialize max_val to something too low
         max_val = -10000
         # generate and test each move
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         if not moves:
             self.board.lose()
             return None
@@ -99,7 +99,7 @@ class Negamax(Player):
         # check if the game is done or depth is reached
         if depth <= 0 or self.board.winner:
             return self.board.value
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         max_val = -10000
         for move in moves:
             if self.testing:
@@ -129,7 +129,7 @@ class AlphaBeta(Player):
         vals = []
         # initalize max_val to lowest possible
         # generate and test each move
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         if not moves:
             self.board.lose()
             return None
@@ -166,7 +166,7 @@ class AlphaBeta(Player):
         # check if the game is done or depth is reached
         if depth <= 0 or self.board.winner:
             return self.board.value
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         # get value of the first one to initalize max_val
         captured_piece, promoted_piece = self.board.apply_move(moves[0])
         # get the value of this move
@@ -242,7 +242,7 @@ class Net(Player):
             return None
         char_move = char_move.split()[1]
         src, dest = MoveGenerator.char_move_to_src_dest(char_move)
-        moves = MoveGenerator(self.board).get_moves()
+        moves = MoveGenerator(self.board).moves
         for move in moves:
             if src == move[0] and dest == move[1]:
                 return move

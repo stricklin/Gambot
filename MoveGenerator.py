@@ -7,28 +7,25 @@ class MoveGenerator:
     def __init__(self, board):
         """takes a board, gets the pieces, gets all legal moves"""
         self.board = board
-        self.pieces = self.get_pieces()
-        self.moves = self.get_moves()
+        self.pieces = self.find_pieces()
+        self.moves = []
+        self.find_moves()
 
-    def get_pieces(self):
-        """gets the piece of the side on move"""
+    def find_pieces(self):
+        """ the piece of the side on move"""
         if self.board.whites_turn:
             return self.board.white_piece_list
         else:
             return self.board.black_piece_list
 
-    def get_moves(self):
-        """gets all the moves for all the pieces"""
-        moves = []
+    def find_moves(self):
+        """finds all the moves for all the pieces"""
         for piece in self.pieces:
-            moves += self.get_pieces_moves(piece)
-        return moves
+            self.find_pieces_moves(piece)
 
-    def get_pieces_moves(self, piece):
-        """gets all the moves for a piece"""
-        moves = []
-        r = piece[0][0]
-        c = piece[0][1]
+    def find_pieces_moves(self, piece):
+        """finds all the moves for a piece"""
+        src = piece[0]
         char_rep = piece[1].upper()
 
         # add the moves based on what kind of piece it is
@@ -38,90 +35,66 @@ class MoveGenerator:
                 f = -1
             else:
                 f = 1
-            moves += self.scan(r, c, f, -1, True, True, True)
-            moves += self.scan(r, c, f, 0, True, False, False)
-            moves += self.scan(r, c, f, 1, True, True, True)
+            self.scan(src, src, f, -1, True, True, True)
+            self.scan(src, src, f, 0, True, False, False)
+            self.scan(src, src, f, 1, True, True, True)
 
         elif char_rep == "N":
-            moves += self.symscan(r, c, 2, 1, True, True)
-            moves += self.symscan(r, c, 1, 2, True, True)
+            self.symscan(src, src, 2, 1, True, True)
+            self.symscan(src, src, 1, 2, True, True)
 
         elif char_rep == "B":
-            moves += self.symscan(r, c, 1, 1, False, True)
-            moves += self.symscan(r, c, 0, 1, True, False)
+            self.symscan(src, src, 1, 1, False, True)
+            self.symscan(src, src, 0, 1, True, False)
 
         elif char_rep == "R":
-            moves += self.symscan(r, c, 0, 1, False, True)
+            self.symscan(src, src, 0, 1, False, True)
 
         elif char_rep == "Q":
-            moves += self.symscan(r, c, 0, 1, False, True)
-            moves += self.symscan(r, c, 1, 1, False, True)
+            self.symscan(src, src, 0, 1, False, True)
+            self.symscan(src, src, 1, 1, False, True)
 
         elif char_rep == "K":
-            moves += self.symscan(r, c, 0, 1, True, True)
-            moves += self.symscan(r, c, 1, 1, True, True)
+            self.symscan(src, src, 0, 1, True, True)
+            self.symscan(src, src, 1, 1, True, True)
 
-        return moves
-
-    def scan(self, r, c, tr, tc, short, can_capture, must_capture=False):
+    def scan(self, src, intermediate, row_change, col_change, short, can_capture, must_capture=False):
         """looks at all the squares projected in the direction"""
-        # TODO: This is cludgdy
-        if not self.check_bounds(r + tr, c + tc):
-            return []
-        if tr == 0:
-            row_change = 0
-        elif tr > 0:
-            row_change = 1
-        else:
-            row_change = -1
-        if tc == 0:
-            col_change = 0
-        elif tc > 0:
-            col_change = 1
-        else:
-            col_change = -1
-        add_move = False
+        if not self.check_bounds(intermediate, row_change, col_change):
+            return
         captured = False
         piece_captured = '.'
         stop = short
-        origin_cord = (r, c)
-        origin = self.board.numpy_board[origin_cord]
-        target_cord = (r + tr, c + tc)
-        target = self.board.numpy_board[target_cord]
-        if target == 0 and not must_capture:
-            add_move = True
-            move_to_add = (origin_cord, target_cord, captured, piece_captured)
+        src_piece = self.board.numpy_board[src]
+        dest = (intermediate[0] + row_change, intermediate[1] + col_change)
+        dest_piece = self.board.numpy_board[dest]
+        if dest_piece == 0 and not must_capture:
+            self.moves.append((src, dest, captured, piece_captured))
         else:
             stop = True
-        if origin * target < 0:
+        if src_piece * dest_piece < 0:
             if can_capture:
-                add_move = True
                 captured = True
-                piece_captured = self.board.num_to_char_piece[self.board.numpy_board[target_cord]]
-                move_to_add = (origin_cord, target_cord, captured, piece_captured)
-        if stop:
-            if add_move:
-                return [move_to_add]
-            else:
-                return []
-        if add_move:
-            return [move_to_add] + self.scan(r, c, tr + row_change, tc + col_change, short, can_capture, must_capture)
-        return self.scan(r, c, tr * 2, tc * 2, short, can_capture, must_capture)
+                piece_captured = self.board.num_to_char_piece[self.board.numpy_board[dest]]
+                self.moves.append((src, dest, captured, piece_captured))
+                stop = True
+        if not stop:
+            self.scan(src, dest, row_change, col_change, short, can_capture, must_capture)
 
-    def check_bounds(self, r, c):
+    def check_bounds(self, src, row_change, col_change):
+        r = src[0] + row_change
+        c = src[1] + col_change
         if r < 0 or r >= self.board.row_count:
             return False
         if c < 0 or c >= self.board.col_count:
             return False
         return True
 
-    def symscan(self, r, c, tr, tc, short, can_capture, must_capture=False):
-        moves = list()
-        moves += self.scan(r, c, tr, tc, short, can_capture, must_capture)
-        moves += self.scan(r, c, -tc, tr, short, can_capture, must_capture)
-        moves += self.scan(r, c, -tr, -tc, short, can_capture, must_capture)
-        moves += self.scan(r, c, tc, -tr, short, can_capture, must_capture)
-        return moves
+    def symscan(self, src, intermediate, row_change, col_change, short, can_capture, must_capture=False):
+        self.scan(src, intermediate, row_change, col_change, short, can_capture, must_capture)
+        self.scan(src, intermediate, -col_change, row_change, short, can_capture, must_capture)
+        self.scan(src, intermediate, -row_change, -col_change, short, can_capture, must_capture)
+        self.scan(src, intermediate, col_change, -row_change, short, can_capture, must_capture)
 
     def get_char_moves(self):
         char_moves = []

@@ -96,15 +96,6 @@ class PawnTest(unittest.TestCase):
 
     all_moves = p1_moves + p2_moves + p3_moves
 
-    def test_pawns(self):
-        self.check_pawn(self.p1, self.p1_moves)
-        self.check_pawn(self.p2, self.p2_moves)
-        self.check_pawn(self.p3, self.p3_moves)
-
-    def check_pawn(self, pawn, moves):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(moves) == set(move_generator.get_pieces_moves(pawn))
 
     def test_moves(self):
         game_state = State.Board(self.init)
@@ -165,6 +156,7 @@ class BishopTest(unittest.TestCase):
     def test_moves(self):
         game_state = State.Board(self.init)
         move_generator = MoveGenerator(game_state)
+        foo = move_generator.moves
         assert set(self.B_moves) == set(move_generator.moves)
 
 
@@ -309,7 +301,7 @@ class Promotion(unittest.TestCase):
     def test_do_undo(self):
         board = State.Board(self.init)
         move_generator = MoveGenerator(board)
-        move = move_generator.get_moves()[0]
+        move = move_generator.moves[0]
         board.apply_move(move)
         assert self.after == board.get_char_state_val()
         board.undo_move(move, None, True)
