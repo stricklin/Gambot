@@ -1,9 +1,6 @@
-from State import Board
+from Client import Client
 from MoveGenerator import MoveGenerator
 import random
-import socket
-import time
-import copy
 
 
 class Player:
@@ -198,200 +195,47 @@ class AlphaBeta(Player):
 
 
 class Net(Player):
-    def __init__(self, board, is_white, username, password, game_type):
+    def __init__(self, board, is_white, username, password, game_type, game_number = None):
         Player.__init__(self, board, is_white)
         self.username = username
         self.password = password
-        self.host = "imcs.svcs.cs.pdx.edu"
-        self.port = 3589
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.logfile_name = "net_logs/" + str(time.strftime("%c"))
         self.game_type = game_type
-        self.first_move = None
+        self.game_number = game_number
+        self.client = Client()
 
-        # make connection
-        self.sock.connect((self.host, self.port))
-        # verify connection
-        welcome = self.read_line()
-        if welcome != "100 imcs 2.5":
-            print "wrong version of server"
-            exit()
-        # login or register
-        if not self.login():
-            self.register()
+        if not self.client.login(self.username, self.password):
+            if not self.client.register(self.username, self.password):
+                exit("unable to login or register")
 
+        # the returns are negated because net players are the opposite color serverside
         if "offer" in game_type:
-            self.offer()
+            self.is_white = not self.client.offer()
         else:
-            self.accept()
-
-    def __del__(self):
-        self.sock.close()
-
-    def write(self, message):
-        sockfile = self.sock.makefile(mode="w")
-        sockfile.write(message + "\n")
-        sockfile.close()
-        self.log(message)
-
-    def read_line(self):
-        return self.read_lines(1)[0]
-
-    def read_lines(self, n):
-        lines = []
-        sockfile = self.sock.makefile(mode="r")
-        for line in range(n):
-            lines.append(sockfile.readline().strip("\r\n"))
-        for line in lines:
-            self.log(line)
-        return lines
-
-    def read_move(self):
-        # read in block
-        message_block = self.read_lines(11)
-        # parse block
-        char_move = message_block[0]
-        # handle gameover
-        if "=" in char_move:
-            game_over = char_move.split()
-            if game_over[1] == "W":
-                self.board.win("white")
-            elif game_over[1] == "B":
-                self.board.win("black")
-            else:
-                self.board.draw()
-            move = None
-            return move
-        board = message_block[2].split("\n")
-        time = message_block[3]
-        # update time
-        # todo: update time
-        # return move
-        move = self.char_move_to_move(char_move)
-        return move
-
-    def read_games(self):
-        # new sockfiles are created here to escape logging unneeded things like:
-        #   asking for games and not getting any
-        #   asking for games and only getting the wrong type
-        # the game list that includes the game returned is manually logged at the end
-        self.log("list")
-        games = []
-        while not games:
-            # for logging
-            original_games = []
-
-            # ask for games
-            sockfile = self.sock.makefile(mode="w")
-            sockfile.write("list" + "\n")
-            sockfile.close()
-
-            # read games
-            sockfile = self.sock.makefile(mode="r")
-            line = None
-            while line != '.':
-                line = sockfile.readline().strip("\r\n")
-                if "available" not in line and "." not in line:
-                    original_games.append(line)
-            sockfile.close()
-            games = copy.deepcopy(original_games)
-
-            # remove games of wrong type
-            for game in games:
-                if self.is_white:
-                    foo = game.split()[2]
-                    if game.split()[2] != "W":
-                        games.remove(game)
-                else:
-                    if game.split()[2] != "B":
-                        games.remove(game)
-        for game in original_games:
-            self.log(game)
-        return games
-
-    def log(self, text):
-        logfile = open(self.logfile_name, mode="a")
-        logfile.write(text + "\n")
-        logfile.close()
-        print text
-
-    def login(self):
-        self.write("me " + self.username + " " + self.password)
-        reply = self.read_line()
-        return reply.startswith("201")
-
-    def register(self):
-        self.write("register " + self.username + " " + self.password)
-        reply = self.read_line()
-        if not reply.startswith("202"):
-            exit("problems registering " + self.username + " with password " + self.password)
-
-    def offer(self):
-        """
-        This function makes an offer of a game
-        offer x will offer a game where the offerer plays side x
-        here it is flipped because the net player presents different sides to the program and the outside
-        :return: 
-        """
-        if self.game_type == "offer?":
-            self.write("offer")
-            sockfile = self.sock.makefile(mode="r", newline="\r\n")
-            lines = [sockfile.readline().strip("\r\n")]
-            # determine what color I am
-            line = sockfile.readline().strip("\r\n")
-            lines.append(line)
-            # if a game is accepted and you are white
-            if "106" in line:
-                self.is_white = True
-                prelude_size = 3
-            # if a game is accepted and you are black
-            else:
-                self.is_white = False
-                prelude_size = 12
-            for counter in range(prelude_size):
-                line = sockfile.readline().strip("\r\n")
-                lines.append(line)
-            if self.is_white:
-                self.first_move = self.char_move_to_move(lines[10])
-            sockfile.close()
-            for line in lines:
-                self.log(line)
-        # for offering black
-        elif not self.is_white:
-            self.write("offer w")
-            prelude = self.read_lines(5)
-        # for offering white
-        else:
-            self.write("offer b")
-            # this prelude includes the first move
-            prelude = self.read_lines(6)
-            # get the first move
-            self.first_move = self.char_move_to_move(prelude[2])
+            self.is_white = not self.accept()
 
     def accept(self):
         # read the games
-        games = self.read_games()
-        game_number = games[0].split()[0]
-        self.write("accept " + game_number)
-        if not self.is_white:
-            prelude = self.read_lines(11)
-        else:
-            # this prelude includes the first move
-            prelude = self.read_lines(12)
-            self.first_move = self.char_move_to_move(prelude[1])
+        if self.game_number:
+            return self.client.accept(self.game_number)
+        games = self.client.get_games()
+        game_number = -1
+        for game in games:
+            if game.split()[4] != "[in-progress]":
+                game_number = game.split()[0]
+        assert game_number > 0
+        return self.client.accept(game_number)
 
     def get_moves(self):
-        # this only happens when Net is white
-        if self.first_move:
-            move = self.first_move
-            self.first_move = None
-        else:
+        # this only happens when Net is black serverside
+        move = self.client.get_first_move()
+        if move is None:
             # send the move that the opponent just made
             if self.board.last_move:
-                self.write(MoveGenerator.move_to_char_move(self.board.last_move))
+                self.client.write(MoveGenerator.move_to_char_move(self.board.last_move))
             # get the new move
-            move = self.read_move()
-        return [move]
+            move, server_board, game_times = self.client.get_message()
+            # todo: verify board and update time
+        return [self.char_move_to_move(move)]
 
     def char_move_to_move(self, char_move):
         if char_move == '':

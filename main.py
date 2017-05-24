@@ -7,7 +7,7 @@ import time
 def make_player(arguments, board, is_white):
     player = None
     player_type = arguments[0]
-    net_player = False
+    net_display = False
     assert player_type in ["h", "r", "nega", "ab", "net"]
     # to pick the write type
     player_type_lookup = {"h": Player.Human,
@@ -29,14 +29,17 @@ def make_player(arguments, board, is_white):
             testing = arguments[2] == "True"
             player = player_type_lookup[player_type](board, is_white, depth, testing)
     elif player_type in ["net"]:
-            net_player = True
+            net_display = True
             username = arguments[1]
             password = arguments[2]
             game_type = arguments[3]
-            if game_type in ["offer", "accept", "offer?", "accept?"]:
+            if len(arguments) == 4:
                 player = player_type_lookup[player_type](board, is_white, username, password, game_type)
+            if len(arguments) == 5:
+                game_number = arguments[4]
+                player = player_type_lookup[player_type](board, is_white, username, password, game_type, game_number)
     assert player
-    return player, net_player
+    return player, net_display
 
 
 if __name__ == "__main__":
@@ -46,11 +49,11 @@ if __name__ == "__main__":
     a player can only have one type. both a white and black player are required
     
     types include:
-    h                                  human player
-    r                                  random player
-    nega <depth>                       vanilla negamax player
-    ab <depth>                         alpha-beta negamax player
-    net <username> <password> [offer]  network player
+    h                                                       human player
+    r                                                       random player
+    nega <depth>                                            vanilla negamax player
+    ab <depth>                                              alpha-beta negamax player
+    net <username> <password> <offer/accept> <game number>  network player
     
     examples:
     -w r -b nega:5         
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # read in a board from a file or load the starting board
-    if args.file and args.white[0] != "net" and args.black[0] != "net" and args.offer == []:
+    if args.file and args.white[0] != "net" and args.black[0] != "net":
         board = State.read_file(args.file)
         board = State.Board(board)
     else:
@@ -79,15 +82,11 @@ if __name__ == "__main__":
                              ".....",
                              "PPPPP",
                              "RNBQK"])
-    if "offer?" in args.white or "offer?" in args.black:
-        if "offer?" in args.white and "offer?" in args.black:
-            exit("unable to have 2 changable type players")
-        if "offer?" in args.white:
-            offerer = make_player(args.white, board, True)
-            other = make_player(args.black, board, True)
-        else:
-            offerer = make_player(args.black, board, True)
-            other = make_player(args.white, board, True)
+    if "net" in args.white or "net" in args.black:
+        if "net" in args.white and "net" in args.black:
+            exit("unable to have 2 net players")
+        offerer, net_display1 = make_player(args.white, board, True)
+        other, net_display2 = make_player(args.black, board, True)
         if offerer.is_white:
             white = offerer
             other.is_white = False
@@ -99,17 +98,17 @@ if __name__ == "__main__":
 
     else:
         # set up players
-        white, white_net = make_player(args.white, board, True)
-        black, black_net = make_player(args.black, board, False)
+        white, net_display1 = make_player(args.white, board, True)
+        black, net_display2 = make_player(args.black, board, False)
     white_time = 0
     black_time = 0
-    net_dipsplay = white_net or black_net
 
+    net_display = net_display1 or net_display2
     game_start = time.time()
     while not board.winner:
         start = time.time()
         move = white.get_move()
-        if not net_dipsplay:
+        if not net_display:
             board.print_char_state()
             print move
         if move:
@@ -118,13 +117,13 @@ if __name__ == "__main__":
         board.last_move = move
         stop = time.time()
         white_time += stop - start
-        if not net_dipsplay:
+        if not net_display:
             print "Time: " + str(stop - start)
             print
         if not board.winner:
             start = time.time()
             move = black.get_move()
-            if not net_dipsplay:
+            if not net_display:
                 board.print_char_state()
                 print move
             if move:
@@ -133,7 +132,7 @@ if __name__ == "__main__":
             board.last_move = move
             stop = time.time()
             black_time += stop - start
-            if not net_dipsplay:
+            if not net_display:
                 print "Time: " + str(stop - start)
                 print
     # try one last move in case I won first
@@ -147,7 +146,7 @@ if __name__ == "__main__":
             board.apply_move(move)
 
     game_stop = time.time()
-    if not net_dipsplay:
+    if not net_display:
         print "winner: " + board.winner
         print "Total time: " + str(game_stop - game_start)
         print "White's time: " + str(white_time)
