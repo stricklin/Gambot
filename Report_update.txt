@@ -1,0 +1,12 @@
+Gambot: the minichess player
+Rubin Stricklin
+
+Much is the same as per my first report,
+but now the networking is much less error
+prone. I added another module to handle all
+of the talking to the server instead of
+trying to handle it inside all inside the
+network player. All of the previous bugs I
+was encountering are gone and I have yet to
+send an illegal move or disconnect at an
+inappropriate time.
