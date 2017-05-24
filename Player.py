@@ -28,7 +28,6 @@ class Player:
             random.shuffle(best_moves)
         return best_moves[0]
 
-    # TODO: make a net player
     # TODO: make a iteritive deepening alpha-beta player with a time limit
     # TODO: add TT
 
@@ -171,7 +170,7 @@ class AlphaBeta(Player):
         if depth <= 0 or self.board.winner:
             return self.board.value
         moves = MoveGenerator(self.board).get_moves()
-        # get value of the first one to initalize max_val todo: I'm pretty sure this is why we do it
+        # get value of the first one to initalize max_val
         captured_piece, promoted_piece = self.board.apply_move(moves[0])
         # get the value of this move
         max_val = -self.alphabeta(depth - 1, -beta, -alpha)
@@ -366,7 +365,7 @@ class Net(Player):
             self.write("offer b")
             # this prelude includes the first move
             prelude = self.read_lines(6)
-            # todo: explain why the below is needed
+            # get the first move
             self.first_move = self.char_move_to_move(prelude[2])
 
     def accept(self):
