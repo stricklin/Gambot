@@ -3,9 +3,12 @@ import State as Board
 
 class MoveGenerator:
     # TODO: write a move sorter
+    # difference in capturing piece and captured piece
+    # xray, if you can threaten a piece through another piece, check out that move
+    # order the pieces
 
     def __init__(self, board):
-        """takes a board, gets the pieces, gets all legal moves"""
+        """takes a state, gets the pieces, gets all legal moves"""
         self.board = board
         self.pieces = self.find_pieces()
         self.moves = []
@@ -69,14 +72,14 @@ class MoveGenerator:
         dest = (intermediate[0] + row_change, intermediate[1] + col_change)
         dest_piece = self.board.numpy_board[dest]
         if dest_piece == 0 and not must_capture:
-            self.moves.append((src, dest, captured, piece_captured))
+            self.moves.append((src, dest))
         else:
             stop = True
         if src_piece * dest_piece < 0:
             if can_capture:
                 captured = True
                 piece_captured = self.board.num_to_char_piece[self.board.numpy_board[dest]]
-                self.moves.append((src, dest, captured, piece_captured))
+                self.moves.append((src, dest))
                 stop = True
         if not stop:
             self.scan(src, dest, row_change, col_change, short, can_capture, must_capture)
@@ -114,14 +117,16 @@ class MoveGenerator:
         return move_translator[move[0]] + "-" + move_translator[move[1]]
 
     @staticmethod
-    def char_move_to_src_dest(char_move):
-        move_translator = { "a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1":(5, 4),
-                            "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2":(4, 4),
-                            "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3":(3, 4),
-                            "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4":(2, 4),
-                            "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5":(1, 4),
-                            "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6":(0, 4),
+    def char_move_to_move(char_move):
+        move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1":(5, 4),
+                           "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2":(4, 4),
+                           "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3":(3, 4),
+                           "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4":(2, 4),
+                           "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5":(1, 4),
+                           "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6":(0, 4),
                            }
+        char_move = char_move[2:]
         char_move = char_move.split("-")
-        return move_translator[char_move[0]], move_translator[char_move[1]]
+        move = (move_translator[char_move[0]], move_translator[char_move[1]])
+        return move
 

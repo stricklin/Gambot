@@ -13,12 +13,12 @@ def read_stdin():
 class Board:
 
     def __init__(self, game_state):
-        # Separate the turn info from the board and store
+        # Separate the turn info from the state and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
         self.whites_turn = players_turn == "W"
 
-        # Store a char representation of the board
+        # Store a char representation of the state
         self.char_board = game_state[1:]
         self.char_board = [list(x) for x in self.char_board]
 
@@ -41,7 +41,7 @@ class Board:
                                   "Q": 5, "q": -5,
                                   "K": 6, "k": -6,
                                   }
-        self.piece_value = {"P": 200,
+        self.piece_value = {"P": 100,
                             "N": 75,
                             "B": 300,
                             "R": 500,
@@ -49,17 +49,21 @@ class Board:
                             "K": 10000,
                             }
 
-        # Set up piece lists and numpy board
+        # Set up piece lists and numpy state
         self.white_piece_list = []
         self.black_piece_list = []
         self.numpy_board = np.zeros((6, 5))
         self.get_pieces()
+
+        # Set up undo stack
+        self.undos = []
 
         # Set done flag
         self.winner = None
 
         # Get value of pieces
         self.value = self.get_value()
+
 
     def get_value(self):
         """sums the values of the piece lists and gets the difference. side on move - other side"""
@@ -79,12 +83,12 @@ class Board:
                 return black_value - white_value
         elif self.winner == "draw":
             return 0
-        elif self.winner == "white":
+        elif self.winner == "white_player":
             if self.whites_turn:
                 return 10000
             else:
                 return -10000
-        elif self.winner == "black":
+        elif self.winner == "black_player":
             if not self.whites_turn:
                 return 10000
             else:
@@ -93,7 +97,7 @@ class Board:
         assert False
 
     def get_pieces(self):
-        """Walks the board and adds each piece to the correct piece list"""
+        """Walks the state and adds each piece to the correct piece list"""
         for r in range(self.row_count):
             for c in range(self.col_count):
                 square = self.char_board[r][c]
@@ -102,12 +106,15 @@ class Board:
 
     def place_piece(self, cords, piece):
         """
-        Puts a piece into it's piece list and onto the numpy board
+        Puts a piece into it's piece list and onto the numpy state
         :param cords: cordinates for where the piece should go
         :param piece: the char_rep of the piece
         :return: 
         """
         # TODO: DRY
+        # if square is empty, return early
+        if piece == '.':
+            return
         if piece.isupper():
             self.white_piece_list.append((cords, piece))
             self.numpy_board[cords] = self.char_to_num_piece[piece]
@@ -117,37 +124,31 @@ class Board:
 
     def pick_up_piece(self, cords):
         """
-        Takes a piece out of the piece list and updates the numpy board
-        :param cords: the cordinates where the piece is on the numpy board
+        Takes a piece out of the piece list and updates the numpy state
+        :param cords: the cordinates where the piece is on the numpy state
         :return: the char_rep of the picked up piece
         """
-        # removed is a flag to make sure that a piece is actually getting picked up
-        removed = False
-        target_piece = None
-        # see if the piece is black or white
+        # see if the piece is black_player or white_player
         num_piece = self.numpy_board[cords]
         char_piece = self.num_to_char_piece[num_piece]
-        is_white = char_piece.isupper()
-        # TODO: This could be more DRY
-        if is_white:
-            for piece in self.white_piece_list:
-                if piece[0] == cords:
-                    target_piece = piece[1]
-                    self.white_piece_list.remove(piece)
-                    self.numpy_board[cords] = 0
-                    removed = True
-        else:
-            for piece in self.black_piece_list:
-                if piece[0] == cords:
-                    target_piece = piece[1]
-                    self.black_piece_list.remove(piece)
-                    self.numpy_board[cords] = 0
-                    removed = True
-        assert removed is True
-        return target_piece
+        # if the square is empty, return early
+        if char_piece != '.':
+            # TODO: This could be more DRY
+            is_white = char_piece.isupper()
+            if is_white:
+                for piece in self.white_piece_list:
+                    if piece[0] == cords:
+                        self.white_piece_list.remove(piece)
+                        self.numpy_board[cords] = 0
+            else:
+                for piece in self.black_piece_list:
+                    if piece[0] == cords:
+                        self.black_piece_list.remove(piece)
+                        self.numpy_board[cords] = 0
+        return char_piece
 
     def print_char_state(self):
-        """prints the state of the board to stdout"""
+        """prints the state of the state to stdout"""
         char_state = self.get_char_state()
         for line in char_state:
             print line
@@ -176,14 +177,14 @@ class Board:
     def get_char_state_val(self):
         """returns a character representation of the state with value"""
         state = self.get_char_state()
-        # get the board value
+        # get the state value
         state.append(str(self.value))
 
         return state
 
     def win(self, winner):
         self.winner = winner
-        if self.winner == "white":
+        if self.winner == "white_player":
             if self.whites_turn:
                 self.value = 10000
             else:
@@ -197,9 +198,9 @@ class Board:
     def lose(self):
         self.value = -10000
         if self.whites_turn:
-            self.winner = "black"
+            self.winner = "black_player"
         else:
-            self.winner = "white"
+            self.winner = "white_player"
 
     def draw(self):
         self.value = 0
@@ -207,21 +208,20 @@ class Board:
 
     def apply_move(self, move):
         """
-        applies a move to the board
-        :param move: the move to apply, is of form (src, dest, char_rep of piece) where src and dest are both (r, c)
+        applies a move to the state
+        :param move: the move to apply, is of form (src, dest) where src and dest are both (r, c)
         :return: None
         """
-        captured_piece = None
+        old_value = self.value
         # remove captured piece
-        if move[2]:
-            captured_piece = self.pick_up_piece(move[1])
-        # update value and check for win by capture
-        if captured_piece:
+        captured_piece = self.pick_up_piece(move[1])
+        if captured_piece != '.':
+            # update value and check for win by capture
             # if a king was taken, win the game
             if captured_piece == "k":
-                self.win("white")
+                self.win("white_player")
             elif captured_piece == "K":
-                self.win("black")
+                self.win("black_player")
             else:
                 self.value += self.piece_value[captured_piece.upper()]
 
@@ -235,6 +235,8 @@ class Board:
         if promoted_piece:
             self.value += self.piece_value['Q']
             self.value -= self.piece_value['P']
+        # store undo information
+        self.undos.append((move[0], move[1], captured_piece, promoted_piece, old_value))
         # update turn counter, switch sides, and flip value
         if not self.whites_turn:
             self.turn_count += 1
@@ -263,40 +265,30 @@ class Board:
                     promoted = True
         return promoted
 
-    def undo_move(self, move, captured_piece, promoted_piece):
-        # TODO: there is extra information here, captured piece is inside move
+    def undo_move(self):
         """
         changes the games state to what it was before the move was applied
-        :param move: The move to undo (src, dest, captured, piece_captured)
-        :param captured_piece: The char_rep of the piece captured
-        :param promoted_piece: If a piece was promoted 
         :return: 
         """
+        # get the old undo information
+        undo = self.undos.pop()
         # update turn counter and  switch sides
         if self.whites_turn:
             self.turn_count -= 1
         assert self.turn_count >= 0
+        self.winner = None
         self.whites_turn = not self.whites_turn
-        self.value = -self.value
-
-        # undo the end of a game
-        if self.winner is not None:
-            self.winner = None
-            self.value = self.get_value()
-
+        self.value = undo[4]
         # pick up piece
-        piece = self.pick_up_piece(move[1])
+        piece = self.pick_up_piece(undo[1])
         # undo promotion
-        if promoted_piece:
+        if undo[3]:
             if self.whites_turn:
                 piece = "P"
             else:
                 piece = "p"
-            self.value -= self.piece_value['Q']
-            self.value += self.piece_value['P']
         # put down piece
-        self.place_piece(move[0], piece)
+        self.place_piece(undo[0], piece)
         # replace captured piece
-        if move[2]:
-            self.place_piece(move[1], captured_piece)
-            self.value -= self.piece_value[captured_piece.upper()]
+        if undo[2] != '.':
+            self.place_piece(undo[1], undo[2])

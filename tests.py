@@ -1,12 +1,13 @@
 import State
 from MoveGenerator import MoveGenerator
+from main import Game
 import Player
 import unittest
 import os
 import numpy as np
 
 
-# having a blank board is handy
+# having a blank state is handy
 init = ["0 W",
         ".....",
         ".....",
@@ -80,18 +81,18 @@ class PawnTest(unittest.TestCase):
     p3 = ((4, 4), "P")
 
     p1_moves = [
-        ((4, 0), (3, 0), False, '.'),
-        ((4, 0), (3, 1), True,  'p')
+        ((4, 0), (3, 0)),
+        ((4, 0), (3, 1))
     ]
 
     p2_moves = [
-        ((4, 2), (3, 1), True, 'p'),
-        ((4, 2), (3, 2), False, '.'),
-        ((4, 2), (3, 3), True, 'p')
+        ((4, 2), (3, 1)),
+        ((4, 2), (3, 2)),
+        ((4, 2), (3, 3))
     ]
     p3_moves = [
-        ((4, 4), (3, 3), True,  'p'),
-        ((4, 4), (3, 4), False, '.')
+        ((4, 4), (3, 3)),
+        ((4, 4), (3, 4))
     ]
 
     all_moves = p1_moves + p2_moves + p3_moves
@@ -114,14 +115,14 @@ class KnightTest(unittest.TestCase):
             ]
 
     N_moves = [
-        ((2, 2), (0, 1), True, 'p'),
-        ((2, 2), (0, 3), True, 'p'),
-        ((2, 2), (1, 0), True, 'p'),
-        ((2, 2), (1, 4), True, 'p'),
-        ((2, 2), (3, 0), True, 'p'),
-        ((2, 2), (3, 4), True, 'p'),
-        ((2, 2), (4, 1), True, 'p'),
-        ((2, 2), (4, 3), True, 'p'),
+        ((2, 2), (0, 1)),
+        ((2, 2), (0, 3)),
+        ((2, 2), (1, 0)),
+        ((2, 2), (1, 4)),
+        ((2, 2), (3, 0)),
+        ((2, 2), (3, 4)),
+        ((2, 2), (4, 1)),
+        ((2, 2), (4, 3)),
     ]
 
     def test_moves(self):
@@ -140,23 +141,22 @@ class BishopTest(unittest.TestCase):
             ".....",
             ]
     B_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (0, 4), True, 'p'),
-        ((2, 2), (3, 3), False, '.'),
-        ((2, 2), (4, 4), False, '.'),
-        ((2, 2), (3, 1), False, '.'),
-        ((2, 2), (4, 0), False, '.'),
-        ((2, 2), (1, 1), True, 'p'),
+        ((2, 2), (2, 3)),
+        ((2, 2), (1, 2)),
+        ((2, 2), (3, 2)),
+        ((2, 2), (1, 3)),
+        ((2, 2), (1, 3)),
+        ((2, 2), (0, 4)),
+        ((2, 2), (3, 3)),
+        ((2, 2), (4, 4)),
+        ((2, 2), (3, 1)),
+        ((2, 2), (4, 0)),
+        ((2, 2), (1, 1)),
     ]
 
     def test_moves(self):
         game_state = State.Board(self.init)
         move_generator = MoveGenerator(game_state)
-        foo = move_generator.moves
         assert set(self.B_moves) == set(move_generator.moves)
 
 
@@ -171,14 +171,14 @@ class RookTest(unittest.TestCase):
             ]
 
     R_moves = [
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (0, 2), True, 'k'),
-        ((2, 2), (2, 1), True, 'p'),
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (2, 4), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (4, 2), False, '.'),
-        ((2, 2), (5, 2), True, 'p'),
+        ((2, 2), (1, 2)),
+        ((2, 2), (0, 2)),
+        ((2, 2), (2, 1)),
+        ((2, 2), (2, 3)),
+        ((2, 2), (2, 4)),
+        ((2, 2), (3, 2)),
+        ((2, 2), (4, 2)),
+        ((2, 2), (5, 2)),
     ]
 
     def test_moves(self):
@@ -198,22 +198,22 @@ class QueenTest(unittest.TestCase):
             ]
 
     Q_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (2, 4), True, 'p'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (4, 2), True, 'p'),
-        ((2, 2), (2, 1), False, '.'),
-        ((2, 2), (2, 0), True, 'p'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (0, 2), True, 'p'),
-        ((2, 2), (1, 3), False, '.'),
-        ((2, 2), (0, 4), True, 'p'),
-        ((2, 2), (3, 3), False, '.'),
-        ((2, 2), (4, 4), True, 'p'),
-        ((2, 2), (3, 1), False, '.'),
-        ((2, 2), (4, 0), True, 'p'),
-        ((2, 2), (1, 1), False, '.'),
-        ((2, 2), (0, 0), True, 'p'),
+        ((2, 2), (2, 3)),
+        ((2, 2), (2, 4)),
+        ((2, 2), (3, 2)),
+        ((2, 2), (4, 2)),
+        ((2, 2), (2, 1)),
+        ((2, 2), (2, 0)),
+        ((2, 2), (1, 2)),
+        ((2, 2), (0, 2)),
+        ((2, 2), (1, 3)),
+        ((2, 2), (0, 4)),
+        ((2, 2), (3, 3)),
+        ((2, 2), (4, 4)),
+        ((2, 2), (3, 1)),
+        ((2, 2), (4, 0)),
+        ((2, 2), (1, 1)),
+        ((2, 2), (0, 0)),
     ]
 
     def test_moves(self):
@@ -233,14 +233,14 @@ class KingTest(unittest.TestCase):
             ]
 
     K_moves = [
-        ((2, 2), (2, 3), False, '.'),
-        ((2, 2), (3, 2), False, '.'),
-        ((2, 2), (2, 1), False, '.'),
-        ((2, 2), (1, 2), False, '.'),
-        ((2, 2), (1, 3), True, 'p'),
-        ((2, 2), (3, 3), True, 'p'),
-        ((2, 2), (3, 1), True, 'p'),
-        ((2, 2), (1, 1), True, 'p'),
+        ((2, 2), (2, 3)),
+        ((2, 2), (3, 2)),
+        ((2, 2), (2, 1)),
+        ((2, 2), (1, 2)),
+        ((2, 2), (1, 3)),
+        ((2, 2), (3, 3)),
+        ((2, 2), (3, 1)),
+        ((2, 2), (1, 1)),
     ]
 
     def test_moves(self):
@@ -279,6 +279,7 @@ class Promotion(unittest.TestCase):
             ".....",
             ".....",
             "....."]
+    board = State.Board(init)
 
     before = ["0 W",
               ".....",
@@ -287,7 +288,7 @@ class Promotion(unittest.TestCase):
               ".....",
               ".....",
               ".....",
-              "200"]
+              str(board.piece_value["P"])]
 
     after = ["0 B",
              "Q....",
@@ -296,16 +297,16 @@ class Promotion(unittest.TestCase):
              ".....",
              ".....",
              ".....",
-             "-700"]
+             str(-board.piece_value["Q"])]
 
     def test_do_undo(self):
-        board = State.Board(self.init)
-        move_generator = MoveGenerator(board)
+        move_generator = MoveGenerator(self.board)
         move = move_generator.moves[0]
-        board.apply_move(move)
-        assert self.after == board.get_char_state_val()
-        board.undo_move(move, None, True)
-        assert self.before == board.get_char_state_val()
+        self.board.apply_move(move)
+        assert self.after == self.board.get_char_state_val()
+        self.board.undo_move()
+        foo = self.board.get_char_state_val()
+        assert self.before == self.board.get_char_state_val()
 
 
 class Turn40Win(unittest.TestCase):
@@ -316,8 +317,8 @@ class Turn40Win(unittest.TestCase):
             ".....",
             "...p.",
             "....K"]
-    move = ((4, 3), (5, 4), True, "K")
-    winner = "black"
+    move = ((4, 3), (5, 4))
+    winner = "black_player"
 
     def test_win(self):
         board = State.Board(self.init)
@@ -357,13 +358,13 @@ class StartingBoard(unittest.TestCase):
                         ]
 
     moves = [
-        ((4, 0), (3, 0), False, '.'),
-        ((4, 1), (3, 1), False, '.'),
-        ((4, 2), (3, 2), False, '.'),
-        ((4, 3), (3, 3), False, '.'),
-        ((4, 4), (3, 4), False, '.'),
-        ((5, 1), (3, 0), False, '.'),
-        ((5, 1), (3, 2), False, '.')
+        ((4, 0), (3, 0)),
+        ((4, 1), (3, 1)),
+        ((4, 2), (3, 2)),
+        ((4, 3), (3, 3)),
+        ((4, 4), (3, 4)),
+        ((5, 1), (3, 0)),
+        ((5, 1), (3, 2))
     ]
 
     def test_moves(self):
@@ -371,29 +372,22 @@ class StartingBoard(unittest.TestCase):
         move_generator = MoveGenerator(game_state)
         assert set(self.moves) == set(move_generator.moves)
 
-    @staticmethod
-    def play_game(board, white, black):
-        # play game
-        while not board.winner:
-            move = white.get_move()
-            board.apply_move(move)
-            if not board.winner:
-                move = black.get_move()
-                board.apply_move(move)
-        print "winner: " + board.winner
-
     def test_evaluator(self):
         # set up players
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 2, True)
-        black = Player.Negamax(board, False, 2, True)
-        self.play_game(board, white, black)
+        white = Player.Negamax(board, True, 2, testing=True)
+        black = Player.Negamax(board, False, 2, testing=True)
+        game = Game(board, white, black, display=True)
+        game.play_game()
 
     def test_alpha_beta(self):
         board = State.Board(self.init)
-        white = Player.AlphaBeta(board, True, 2, True)
-        black = Player.AlphaBeta(board, False, 2, True)
-        self.play_game(board, white, black)
+        white = Player.Negamax(board, True, 2, True, testing=True)
+        black = Player.Negamax(board, False, 2, True, testing=True)
+        game = Game(board, white, black, display=True)
+        game.play_game()
+
+# todo: shortest win, longest lost test
 
 if __name__ == "__main__":
     unittest.main()

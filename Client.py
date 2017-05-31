@@ -123,10 +123,10 @@ class Client:
             lines.append(line)
         else:
             line = lines[0]
-        # if a game is accepted and you are white server side
+        # if a game is accepted and you are white_player server side
         if "105" in line:
             lines += self.white_start(sockfile)
-        # if a game is accepted and you are black server side
+        # if a game is accepted and you are black_player server side
         elif "106" in line:
             lines += self.black_start(sockfile)
         sockfile.close()
@@ -136,7 +136,7 @@ class Client:
             exit("Something went wrong, game was not offered")
 
     def white_start(self, sockfile):
-        # start when white serverside
+        # start when white_player serverside
         self.is_white = True
         lines = []
         for counter in range(10):
@@ -145,7 +145,7 @@ class Client:
         return lines
 
     def black_start(self, sockfile):
-        # start when black serverside
+        # start when black_player serverside
         self.is_white = False
         lines = []
         for counter in range(11):
