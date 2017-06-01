@@ -389,22 +389,14 @@ class StartingBoard(unittest.TestCase):
         move_generator = MoveGenerator(game_state)
         assert set(self.moves) == set(move_generator.moves)
 
-    def test_evaluator(self):
-        # set up players
+    def test_alpha_beta_and_do_undo(self):
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 2, testing=True)
+        white = Player.Random(board, True, testing=True)
         black = Player.Negamax(board, False, 2, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 
-    def test_alpha_beta(self):
-        board = State.Board(self.init)
-        white = Player.Negamax(board, True, 1, testing=True)
-        black = Player.Negamax(board, False, 2, testing=True)
-        game = Game(board, white, black, display=False)
-        game.play_game()
-
-# todo: shortest win, longest lost test
+# todo: shortest win, longest lost tests
 
 if __name__ == "__main__":
     unittest.main()
