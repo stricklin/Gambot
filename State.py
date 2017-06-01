@@ -1,5 +1,7 @@
-import numpy as np
 import sys
+from Square import Square
+from Move import Move
+from Undo import Undo
 
 
 def read_file(file):
@@ -21,10 +23,12 @@ class Board:
         # Store a char representation of the state
         self.char_board = game_state[1:]
         self.char_board = [list(x) for x in self.char_board]
+        # todo: update char board? or discard after init?
 
         # Set up invarients
         self.row_count = 6
         self.col_count = 5
+        self.col_letters = ['a', 'b', 'c', 'd', 'e']
         self.num_to_char_piece = {0: ".",
                                   1: "P", -1: "p",
                                   2: "N", -2: "n",
@@ -49,10 +53,10 @@ class Board:
                             "K": 10000,
                             }
 
-        # Set up piece lists and numpy state
+        # Set up piece lists and dict_board
         self.white_piece_list = []
         self.black_piece_list = []
-        self.numpy_board = np.zeros((6, 5))
+        self.dict_board = {}
         self.get_pieces()
 
         # Set up undo stack
@@ -64,19 +68,16 @@ class Board:
         # Get value of pieces
         self.value = self.get_value()
 
-
     def get_value(self):
         """sums the values of the piece lists and gets the difference. side on move - other side"""
-        white_value = 0
-        black_value = 0
         # TODO: this seems like it could be done better
         if self.winner is None:
             white_value = 0
             black_value = 0
             for piece in self.white_piece_list:
-                white_value += self.piece_value[piece[1]]
+                white_value += self.piece_value[piece.piece]
             for piece in self.black_piece_list:
-                black_value += self.piece_value[piece[1].upper()]
+                black_value += self.piece_value[piece.piece.upper()]
             if self.whites_turn:
                 return white_value - black_value
             else:
@@ -100,51 +101,49 @@ class Board:
         """Walks the state and adds each piece to the correct piece list"""
         for r in range(self.row_count):
             for c in range(self.col_count):
-                square = self.char_board[r][c]
-                if square != ".":
-                        self.place_piece((r, c), square)
+                # todo: replace the column numbers with letters
+                char_piece = self.char_board[r][c]
+                self.place_piece(Square((r, c), char_piece), char_piece)
 
-    def place_piece(self, cords, piece):
+    def place_piece(self, square, piece):
         """
-        Puts a piece into it's piece list and onto the numpy state
-        :param cords: cordinates for where the piece should go
+        Puts a piece into it's piece list and into the dict_board
+        :param square: the square where the piece should go
         :param piece: the char_rep of the piece
         :return: 
         """
-        # TODO: DRY
-        # if square is empty, return early
+        square.piece = piece
+        self.dict_board[square.cords] = piece
+        # if square is not empty put piece into piece list
         if piece == '.':
             return
         if piece.isupper():
-            self.white_piece_list.append((cords, piece))
-            self.numpy_board[cords] = self.char_to_num_piece[piece]
+            self.white_piece_list.append(square)
         else:
-            self.black_piece_list.append((cords, piece))
-            self.numpy_board[cords] = self.char_to_num_piece[piece]
+            self.black_piece_list.append(square)
 
-    def pick_up_piece(self, cords):
+    def pick_up_piece(self, square):
         """
-        Takes a piece out of the piece list and updates the numpy state
-        :param cords: the cordinates where the piece is on the numpy state
+        Takes a piece out of the piece list and updates the dict_board
+        :param square: the cords where the piece is on the dict_board
         :return: the char_rep of the picked up piece
         """
         # see if the piece is black_player or white_player
-        num_piece = self.numpy_board[cords]
-        char_piece = self.num_to_char_piece[num_piece]
+        char_piece = self.dict_board[square.cords]
         # if the square is empty, return early
         if char_piece != '.':
             # TODO: This could be more DRY
             is_white = char_piece.isupper()
             if is_white:
                 for piece in self.white_piece_list:
-                    if piece[0] == cords:
+                    if piece.cords == square.cords:
                         self.white_piece_list.remove(piece)
-                        self.numpy_board[cords] = 0
+                        self.dict_board[square.cords] = '.'
             else:
                 for piece in self.black_piece_list:
-                    if piece[0] == cords:
+                    if piece == square:
                         self.black_piece_list.remove(piece)
-                        self.numpy_board[cords] = 0
+                        self.dict_board[square.cords] = '.'
         return char_piece
 
     def print_char_state(self):
@@ -165,11 +164,12 @@ class Board:
             turn_info += " B"
         state.append(turn_info)
 
-        # convert numpy_board to char Board
+        # convert dict_board to char Board
         for r in range(self.row_count):
             row = ""
             for c in range(self.col_count):
-                row += self.num_to_char_piece[self.numpy_board[r][c]]
+                # todo: maybe this should be a generator?
+                row += self.dict_board[(r, c)]
             state.append(row)
 
         return state
@@ -209,12 +209,16 @@ class Board:
     def apply_move(self, move):
         """
         applies a move to the state
-        :param move: the move to apply, is of form (src, dest) where src and dest are both (r, c)
+        :param move: the move to apply, is of form (src, dest) where src and dest are both Squares
         :return: None
         """
-        old_value = self.value
+
+        # store undo information
+        undo = Undo(self.dict_board, move, self.value)
+        self.undos.append(undo)
+
         # remove captured piece
-        captured_piece = self.pick_up_piece(move[1])
+        captured_piece = self.pick_up_piece(move.dest)
         if captured_piece != '.':
             # update value and check for win by capture
             # if a king was taken, win the game
@@ -225,18 +229,20 @@ class Board:
             else:
                 self.value += self.piece_value[captured_piece.upper()]
 
-        # pick up piece
-        piece = self.pick_up_piece(move[0])
-        # put down piece
-        self.place_piece(move[1], piece)
-
+        # remove piece
+        piece = self.pick_up_piece(move.src)
         # promote pawns
-        promoted_piece = self.check_for_promotion()
-        if promoted_piece:
+        if undo.promotion:
             self.value += self.piece_value['Q']
             self.value -= self.piece_value['P']
-        # store undo information
-        self.undos.append((move[0], move[1], captured_piece, promoted_piece, old_value))
+            if self.whites_turn:
+                piece = "Q"
+            else:
+                piece = "q"
+        # replace piece
+        self.place_piece(move.dest, piece)
+
+
         # update turn counter, switch sides, and flip value
         if not self.whites_turn:
             self.turn_count += 1
@@ -246,23 +252,6 @@ class Board:
                     self.draw()
         self.whites_turn = not self.whites_turn
         self.value = -self.value
-
-    def check_for_promotion(self):
-        # TODO: check for promotion in the moves generated to save scanning the piece lists
-        promoted = False
-        if self.whites_turn:
-            for piece in self.white_piece_list:
-                if piece[0][0] == 0 and piece[1] == "P":
-                    self.pick_up_piece(piece[0])
-                    self.place_piece(piece[0], "Q")
-                    promoted = True
-        else:
-            for piece in self.black_piece_list:
-                if piece[0][0] == 5 and piece[1] == "p":
-                    self.pick_up_piece(piece[0])
-                    self.place_piece(piece[0], 'q')
-                    promoted = True
-        return promoted
 
     def undo_move(self):
         """
@@ -277,17 +266,17 @@ class Board:
         assert self.turn_count >= 0
         self.winner = None
         self.whites_turn = not self.whites_turn
-        self.value = undo[4]
+        self.value = undo.old_value
         # pick up piece
-        piece = self.pick_up_piece(undo[1])
+        piece = self.pick_up_piece(undo.old_dest)
         # undo promotion
-        if undo[3]:
+        if undo.promotion:
             if self.whites_turn:
                 piece = "P"
             else:
                 piece = "p"
         # put down piece
-        self.place_piece(undo[0], piece)
+        self.place_piece(undo.old_src, piece)
         # replace captured piece
-        if undo[2] != '.':
-            self.place_piece(undo[1], undo[2])
+        if undo.captured_piece != '.':
+            self.place_piece(undo.old_dest, undo.captured_piece)

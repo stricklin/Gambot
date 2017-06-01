@@ -1,4 +1,7 @@
 import State as Board
+from Move import Move
+from Square import Square
+from Undo import Undo
 
 
 class MoveGenerator:
@@ -15,7 +18,7 @@ class MoveGenerator:
         self.find_moves()
 
     def find_pieces(self):
-        """ the piece of the side on move"""
+        """ the pieces of the side on move"""
         if self.board.whites_turn:
             return self.board.white_piece_list
         else:
@@ -26,13 +29,12 @@ class MoveGenerator:
         for piece in self.pieces:
             self.find_pieces_moves(piece)
 
-    def find_pieces_moves(self, piece):
-        """finds all the moves for a piece"""
-        src = piece[0]
-        char_rep = piece[1].upper()
+    def find_pieces_moves(self, src):
+        """finds all the moves for a src"""
+        piece_type = src.piece.upper()
 
-        # add the moves based on what kind of piece it is
-        if char_rep == "P":
+        # add the moves based on what kind of src it is
+        if piece_type == "P":
             # set the forward direction
             if self.board.whites_turn:
                 f = -1
@@ -42,22 +44,22 @@ class MoveGenerator:
             self.scan(src, src, f, 0, True, False, False)
             self.scan(src, src, f, 1, True, True, True)
 
-        elif char_rep == "N":
+        elif piece_type == "N":
             self.symscan(src, src, 2, 1, True, True)
             self.symscan(src, src, 1, 2, True, True)
 
-        elif char_rep == "B":
+        elif piece_type == "B":
             self.symscan(src, src, 1, 1, False, True)
             self.symscan(src, src, 0, 1, True, False)
 
-        elif char_rep == "R":
+        elif piece_type == "R":
             self.symscan(src, src, 0, 1, False, True)
 
-        elif char_rep == "Q":
+        elif piece_type == "Q":
             self.symscan(src, src, 0, 1, False, True)
             self.symscan(src, src, 1, 1, False, True)
 
-        elif char_rep == "K":
+        elif piece_type == "K":
             self.symscan(src, src, 0, 1, True, True)
             self.symscan(src, src, 1, 1, True, True)
 
@@ -65,28 +67,23 @@ class MoveGenerator:
         """looks at all the squares projected in the direction"""
         if not self.check_bounds(intermediate, row_change, col_change):
             return
-        captured = False
-        piece_captured = '.'
-        stop = short
-        src_piece = self.board.numpy_board[src]
-        dest = (intermediate[0] + row_change, intermediate[1] + col_change)
-        dest_piece = self.board.numpy_board[dest]
-        if dest_piece == 0 and not must_capture:
-            self.moves.append((src, dest))
+        dest_cords = (intermediate.row + row_change, intermediate.col + col_change)
+        dest = Square(dest_cords, self.board.dict_board[dest_cords])
+
+        if dest.piece == '.' and not must_capture:
+            self.moves.append(Move(src, dest))
         else:
-            stop = True
-        if src_piece * dest_piece < 0:
-            if can_capture:
-                captured = True
-                piece_captured = self.board.num_to_char_piece[self.board.numpy_board[dest]]
-                self.moves.append((src, dest))
-                stop = True
-        if not stop:
+            short = True
+        if dest.piece != '.':
+            if src.piece.isupper() != dest.piece.isupper():
+                if can_capture:
+                    self.moves.append(Move(src, dest))
+        if not short:
             self.scan(src, dest, row_change, col_change, short, can_capture, must_capture)
 
     def check_bounds(self, src, row_change, col_change):
-        r = src[0] + row_change
-        c = src[1] + col_change
+        r = src.row + row_change
+        c = src.col + col_change
         if r < 0 or r >= self.board.row_count:
             return False
         if c < 0 or c >= self.board.col_count:
@@ -114,7 +111,7 @@ class MoveGenerator:
                            (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
                            (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
                            }
-        return move_translator[move[0]] + "-" + move_translator[move[1]]
+        return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
 
     @staticmethod
     def char_move_to_move(char_move):
