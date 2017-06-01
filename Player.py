@@ -203,8 +203,7 @@ class IterativeDeepening(Player):
             time_left = self.time_limit - self.time_elapsed
             new_moves = Negamax(board=self.board, is_white=self.is_white, depth=depth,
                                 alphabeta_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
-        if self.testing:
-            print "depth reached: " + str(depth)
+        print "depth reached: " + str(depth)
         return old_moves
 
     def out_of_time(self):
