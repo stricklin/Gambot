@@ -64,7 +64,7 @@ class StartingBoard(unittest.TestCase):
         assert self.whites_turn == game_state.whites_turn
         assert self.white_piece_list == game_state.white_piece_list
         assert self.black_piece_list == game_state.black_piece_list
-        assert self.init == game_state.get_char_state_val()
+        assert self.init == game_state.get_char_state()
 
 
 class PawnTest(unittest.TestCase):
@@ -323,7 +323,24 @@ class Turn40Win(unittest.TestCase):
     def test_win(self):
         board = State.Board(self.init)
         board.apply_move(self.move)
-        assert  self.winner == board.winner
+        assert self.winner == board.winner
+
+
+class Turn40Draw(unittest.TestCase):
+    init = ["40 B",
+            "....k",
+            ".....",
+            ".....",
+            ".....",
+            "...p.",
+            "....K"]
+    move = ((4, 3), (5, 3))
+    winner = "draw"
+
+    def test_win(self):
+        board = State.Board(self.init)
+        board.apply_move(self.move)
+        assert self.winner == board.winner
 
 
 class StartingBoard(unittest.TestCase):
@@ -375,16 +392,16 @@ class StartingBoard(unittest.TestCase):
     def test_evaluator(self):
         # set up players
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 2, testing=True)
-        black = Player.Negamax(board, False, 2, testing=True)
-        game = Game(board, white, black, display=True)
+        white = Player.Negamax(board, True, 1, testing=True)
+        black = Player.Negamax(board, False, 1, testing=True)
+        game = Game(board, white, black, display=False)
         game.play_game()
 
     def test_alpha_beta(self):
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 2, True, testing=True)
-        black = Player.Negamax(board, False, 2, True, testing=True)
-        game = Game(board, white, black, display=True)
+        white = Player.Negamax(board, True, 1, testing=True)
+        black = Player.Negamax(board, False, 2, testing=True)
+        game = Game(board, white, black, display=False)
         game.play_game()
 
 # todo: shortest win, longest lost test

@@ -246,7 +246,6 @@ class Board:
                     self.draw()
         self.whites_turn = not self.whites_turn
         self.value = -self.value
-        return captured_piece, promoted_piece,
 
     def check_for_promotion(self):
         # TODO: check for promotion in the moves generated to save scanning the piece lists

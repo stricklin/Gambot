@@ -57,11 +57,12 @@ class Game:
             self.print_time(turn_duration)
 
     def end_game(self):
-        # try one last move in case I won first
-        if self.board.whites_turn:
-            self.take_move(self.white)
-        else:
-            self.take_move(self.black)
+        # apply one last move in case the game was won locally
+        if self.board.winner is not "draw":
+            if self.board.whites_turn:
+                self.take_move(self.white)
+            else:
+                self.take_move(self.black)
         self.game_end = time.time()
         if self.display:
             print "winner: " + self.board.winner
@@ -109,11 +110,13 @@ def make_player(arguments, board, is_white, testing):
             password = get_arg_value(arguments, "p")
             game_type = get_arg_value(arguments, "gt")
             game_id = get_arg_value(arguments, "gid")
-            if game_id:
-                player = player_type_lookup[player_type](board, is_white, username, password, game_type, testing)
-            if len(arguments) == 5:
-                player = player_type_lookup[player_type](board, is_white,
-                                                         username, password, game_type, game_id, testing)
+            if not game_id:
+                player = player_type_lookup[player_type](board=board, is_white=is_white,
+                                                         username=username, password=password, game_type=game_type)
+            else:
+                player = player_type_lookup[player_type](board=board, is_white=is_white,
+                                                         username=username, password=password,
+                                                         game_type=game_type, game_id=game_id)
     assert player
     return player, net_player
 
@@ -134,7 +137,7 @@ def get_arg_value(arguments, flag, delimiter=":"):
     # Find argument
     arg_index = None
     for index in range(len(arguments)):
-        if flag in arguments[index]:
+        if flag + delimiter in arguments[index]:
             arg_index = index
             break
     # If the argument is not found, return None
