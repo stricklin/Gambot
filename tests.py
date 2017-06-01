@@ -392,8 +392,8 @@ class StartingBoard(unittest.TestCase):
     def test_evaluator(self):
         # set up players
         board = State.Board(self.init)
-        white = Player.Negamax(board, True, 1, testing=True)
-        black = Player.Negamax(board, False, 1, testing=True)
+        white = Player.Negamax(board, True, 2, testing=True)
+        black = Player.Negamax(board, False, 2, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 

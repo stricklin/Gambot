@@ -53,6 +53,98 @@ class Random(Player):
         return moves
 
 
+class NewNegamax(Player):
+    def __init__(self, board, is_white, depth, alphabeta_pruning=False, testing=False):
+        Player.__init__(self, board, is_white, testing)
+        self.depth = depth
+        self.alphabeta_pruning = alphabeta_pruning
+        self.max_val = -10000
+        # vals is for testing
+        self.vals = []
+
+    def get_moves(self):
+        assert self.is_white == self.board.whites_turn
+        best_moves = []
+        # initialize max_val to something too low
+        self.max_val = -10000
+        # generate and test each move
+        moves = MoveGenerator(self.board).moves
+        if not moves:
+            self.board.lose()
+            return None
+        for move in moves:
+            # apply move
+            self.board.apply_move(move)
+            # get the value of this move
+            if self.alphabeta_pruning:
+                # this is the widest window possible for alpha beta
+                val = - self.negamax(self.depth, -10000, 10000)
+            else:
+                val = - self.negamax(self.depth)
+            # if this is a better move, remember it
+            if val > self.max_val:
+                self.max_val = val
+                best_moves = [move]
+                if self.testing:
+                    self.vals = [val]
+            # if more than one move is best, keep them all
+            elif val == self.max_val:
+                best_moves.append(move)
+                if self.testing:
+                    self.vals.append(val)
+            # undo move
+            self.board.undo_move()
+        if self.testing:
+            # make sure that newnegamax, negamax and alphabeta are returning the same values
+            negamax_moves = Negamax(self.board, self.is_white, self.depth, True).get_moves()
+            alphabeta_moves = Negamax(self.board, self.is_white, self.depth, True).get_moves()
+            assert set(negamax_moves) == set(best_moves) == set(alphabeta_moves)
+        return best_moves
+
+    def negamax(self, depth, alpha=None, beta=None):
+        # check if the game is done or depth is reached
+        if depth <= 0 or self.board.winner:
+            return self.board.value
+        moves = MoveGenerator(self.board).moves
+        self.board.apply_move(moves[0])
+        # get value of the first one to initalize max_val
+        if self.alphabeta_pruning:
+            max_val = -self.negamax(depth - 1, -beta, -alpha)
+        else:
+            max_val = -self.negamax(depth - 1)
+        # undo move
+        self.board.undo_move()
+        #TODO: comment here to explain how this pruning works
+        if self.alphabeta_pruning:
+            if max_val > beta:
+                return max_val
+            alpha = max(alpha, max_val)
+
+        # try remaining moves
+        for move in moves[1:]:
+            # this tests that undo is working correctly
+            if self.testing:
+                old_state = self.board.get_char_state_val()
+            # apply move
+            self.board.apply_move(move)
+            # get the value of this move
+            if self.alphabeta_pruning:
+                val = -self.negamax(depth - 1, -beta, -alpha)
+            else:
+                val = -self.negamax(depth - 1)
+            # remember the best value
+            if val > max_val:
+                max_val = val
+            # undo move
+            self.board.undo_move()
+
+            # this tests that undo is working correctly
+            if self.testing:
+                foo = self.board.get_char_state_val()
+                assert set(old_state) == set(self.board.get_char_state_val())
+        return max_val
+
+
 class Negamax(Player):
     def __init__(self, board, is_white, depth, alphabeta_pruning=False, testing=False):
         Player.__init__(self, board, is_white, testing)
@@ -97,8 +189,6 @@ class Negamax(Player):
                     self.vals.append(val)
             # undo move
             self.board.undo_move()
-        if self.testing:
-            return best_moves
         return best_moves
 
     def negamax(self, depth):
@@ -157,8 +247,6 @@ class Negamax(Player):
             # make sure that negamax and alpha beta are returning the same values
             negamax_moves = Negamax(self.board, self.is_white, self.depth, True).get_moves()
             assert set(negamax_moves) == set(best_moves)
-        if self.testing:
-            return best_moves
         return best_moves
 
     def alphabeta(self, depth, alpha, beta):

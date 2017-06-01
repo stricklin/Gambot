@@ -17,7 +17,7 @@ import time
 
 
 class Game:
-    def __init__(self, board, white, black, display):
+    def __init__(self, board, white, black, display=True):
         self.board = board
         self.white = white
         self.black = black
