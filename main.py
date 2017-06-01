@@ -102,7 +102,7 @@ def make_player(arguments, board, is_white, testing):
         else:
             player = player_type_lookup[player_type](board, is_white, depth, False, testing)
     elif player_type in ["id"]:
-            time_limit = int(get_arg_value(arguments, "t"))
+            time_limit = int(get_arg_value(arguments, "tl"))
             player = player_type_lookup[player_type](board, is_white, time_limit, testing)
     elif player_type in ["net"]:
             net_player = True

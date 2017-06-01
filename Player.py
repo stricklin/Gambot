@@ -54,16 +54,21 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, depth, alphabeta_pruning=False, testing=False):
+    def __init__(self, board, is_white, depth, alphabeta_pruning=False, time_limit=None, testing=False):
         Player.__init__(self, board, is_white, testing)
         self.depth = depth
         self.alphabeta_pruning = alphabeta_pruning
         self.max_val = -10000
+        self.time_limit = time_limit
+        self.start_time = None
         # vals is for testing
         self.vals = []
 
     def get_moves(self):
         assert self.is_white == self.board.whites_turn
+        # start timer for iteritive deepening
+        if self.time_limit:
+            self.start_time = time.time()
         best_moves = []
         # initialize max_val to something too low
         self.max_val = -10000
@@ -73,12 +78,21 @@ class Negamax(Player):
             self.board.lose()
             return None
         for move in moves:
+            # return nothing if out of time
+            if self.out_of_time():
+                return None
             # apply move
             self.board.apply_move(move)
             # get the value of this move
             if self.alphabeta_pruning:
                 # this is the widest window possible for alpha beta
-                val = - self.negamax(self.depth, -10000, 10000)
+            # maybe_value catches none values for early return from timeouts
+                maybe_value = self.negamax(self.depth, -10000, 10000)
+                if maybe_value is not None:
+                    val = - maybe_value
+                else:
+                    self.board.undo_move()
+                    return None
             else:
                 val = - self.negamax(self.depth)
             # if this is a better move, remember it
@@ -94,14 +108,17 @@ class Negamax(Player):
                     self.vals.append(val)
             # undo move
             self.board.undo_move()
-        if self.testing:
-            # make sure that newnegamax, negamax and alphabeta are returning the same values
-            negamax_moves = Negamax(self.board, self.is_white, self.depth, True).get_moves()
-            alphabeta_moves = Negamax(self.board, self.is_white, self.depth, True).get_moves()
-            assert set(negamax_moves) == set(best_moves) == set(alphabeta_moves)
+        if self.testing and self.alphabeta_pruning and not self.time_limit:
+            # this checks that the same moves are being produced
+            # it's turned off during iteritive deepening because it is slow
+            unpruned_moves = Negamax(self.board, self.is_white, self.depth, alphabeta_pruning=False, testing=True).get_moves()
+            assert set(best_moves) == set(unpruned_moves)
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
+        # return nothing if out of time
+        if self.out_of_time():
+            return None
         # check if the game is done or depth is reached
         if depth <= 0 or self.board.winner:
             return self.board.value
@@ -109,7 +126,13 @@ class Negamax(Player):
         self.board.apply_move(moves[0])
         # get value of the first one to initalize max_val
         if self.alphabeta_pruning:
-            max_val = -self.negamax(depth - 1, -beta, -alpha)
+            # maybe_value catches none values for early return from timeouts
+            maybe_value = self.negamax(depth - 1, -beta, -alpha)
+            if maybe_value is not None:
+                max_val = - maybe_value
+            else:
+                self.board.undo_move()
+                return None
         else:
             max_val = -self.negamax(depth - 1)
         # undo move
@@ -122,14 +145,23 @@ class Negamax(Player):
 
         # try remaining moves
         for move in moves[1:]:
-            # this tests that undo is working correctly
+            # return nothing if out of time
+            if self.out_of_time():
+                return None
             if self.testing:
+                # grab the before state to test undo
                 old_state = self.board.get_char_state_val()
             # apply move
             self.board.apply_move(move)
             # get the value of this move
             if self.alphabeta_pruning:
-                val = -self.negamax(depth - 1, -beta, -alpha)
+                # maybe_value catches none values for early return from timeouts
+                maybe_value = self.negamax(depth - 1, -beta, -alpha)
+                if maybe_value is not None:
+                    val = - maybe_value
+                else:
+                    self.board.undo_move()
+                    return None
             else:
                 val = -self.negamax(depth - 1)
             # remember the best value
@@ -138,10 +170,48 @@ class Negamax(Player):
             # undo move
             self.board.undo_move()
 
-            # this tests that undo is working correctly
             if self.testing:
+                # compare the before state with the undone state
                 assert set(old_state) == set(self.board.get_char_state_val())
         return max_val
+
+    def out_of_time(self):
+        # check if iteritive deepening
+        if self.time_limit:
+            time_elapsed = time.time() - self.start_time
+            if time_elapsed > self.time_limit:
+                return True
+        return False
+
+
+class IterativeDeepening(Player):
+    def __init__(self, board, is_white, time_limit, testing=False):
+        Player.__init__(self, board, is_white, testing)
+        self.time_limit = time_limit
+        self.time_elapsed = None
+        self.start_time = None
+
+    def get_moves(self):
+        depth = 0
+        old_moves = []
+        new_moves = []
+        self.start_time = time.time()
+        while not self.out_of_time():
+            depth += 1
+            old_moves = new_moves
+            self.time_elapsed = time.time() - self.start_time
+            time_left = self.time_limit - self.time_elapsed
+            new_moves = Negamax(board=self.board, is_white=self.is_white, depth=depth,
+                                alphabeta_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
+        if self.testing:
+            print "depth reached: " + str(depth)
+        return old_moves
+
+    def out_of_time(self):
+        self.time_elapsed = time.time() - self.start_time
+        if self.time_elapsed > self.time_limit:
+            return True
+        return False
 
 
 class Net(Player):
@@ -188,25 +258,4 @@ class Net(Player):
         return [MoveGenerator.char_move_to_move(move)]
 
 
-class IterativeDeepening(Player):
-    def __init__(self, board, is_white, time_limit, testing=False):
-        Player.__init__(self, board, is_white, testing)
-        self.time_limit = time_limit
-        self.start_time = None
 
-    def get_moves(self):
-        depth = 0
-        old_moves = []
-        new_moves = []
-        self.start_time = time.time()
-        while not self.out_of_time():
-            depth += 1
-            old_moves = new_moves
-            time_elapsed = time.time() - self.start_time
-            time_left = self.time_limit - time_elapsed
-            if self.testing:
-                new_moves = Negamax(board=self.board, is_white=self.is_white, depth=depth,
-                                    alphabeta_pruning=True, time_limit=time_left, testing=self.testing)
-        if self.testing:
-            print "depth reached: " + str(depth)
-            return old_moves,
