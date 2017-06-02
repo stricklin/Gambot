@@ -20,9 +20,9 @@ class MoveGenerator:
     def find_pieces(self):
         """ the pieces of the side on move"""
         if self.board.whites_turn:
-            return self.board.white_piece_list
+            return self.board.white_piece_list.get_pieces()
         else:
-            return self.board.black_piece_list
+            return self.board.black_piece_list.get_pieces()
 
     def find_moves(self):
         """finds all the moves for all the pieces"""
@@ -68,7 +68,7 @@ class MoveGenerator:
         if not self.check_bounds(intermediate, row_change, col_change):
             return
         dest_cords = (intermediate.row + row_change, intermediate.col + col_change)
-        dest = Square(dest_cords, self.board.dict_board[dest_cords])
+        dest = self.board.dict_board[dest_cords]
 
         if dest.piece == '.' and not must_capture:
             self.moves.append(Move(src, dest))
@@ -96,34 +96,5 @@ class MoveGenerator:
         self.scan(src, intermediate, -row_change, -col_change, short, can_capture, must_capture)
         self.scan(src, intermediate, col_change, -row_change, short, can_capture, must_capture)
 
-    def get_char_moves(self):
-        char_moves = []
-        for move in self.moves:
-            char_moves.append(self.move_to_char_move(move))
-        return char_moves
 
-    @staticmethod
-    def move_to_char_move(move):
-        move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
-                           (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
-                           (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
-                           (2, 0): "a4", (2, 1): "b4", (2, 2): "c4", (2, 3): "d4", (2, 4): "e4",
-                           (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
-                           (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
-                           }
-        return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
-
-    @staticmethod
-    def char_move_to_move(char_move):
-        move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1":(5, 4),
-                           "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2":(4, 4),
-                           "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3":(3, 4),
-                           "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4":(2, 4),
-                           "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5":(1, 4),
-                           "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6":(0, 4),
-                           }
-        char_move = char_move[2:]
-        char_move = char_move.split("-")
-        move = (move_translator[char_move[0]], move_translator[char_move[1]])
-        return move
 

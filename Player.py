@@ -1,5 +1,6 @@
 from Client import Client
 from MoveGenerator import MoveGenerator
+from Move import Move
 import random
 import time
 
@@ -21,9 +22,6 @@ class Player:
         if not self.testing:
             random.shuffle(best_moves)
         return best_moves[0]
-
-    # TODO: make a iteritive deepening alpha-beta player with a time limit
-    # TODO: add TT
 
 
 class Human(Player):
@@ -54,10 +52,10 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, depth, alphabeta_pruning=False, time_limit=None, testing=False):
+    def __init__(self, board, is_white, depth, ab_pruning=False, time_limit=None, testing=False):
         Player.__init__(self, board, is_white, testing)
         self.depth = depth
-        self.alphabeta_pruning = alphabeta_pruning
+        self.ab_pruning = ab_pruning
         self.max_val = -10000
         self.time_limit = time_limit
         self.start_time = None
@@ -84,9 +82,9 @@ class Negamax(Player):
             # apply move
             self.board.apply_move(move)
             # get the value of this move
-            if self.alphabeta_pruning:
+            if self.ab_pruning:
                 # this is the widest window possible for alpha beta
-            # maybe_value catches none values for early return from timeouts
+                # maybe_value catches None values for early return from timeouts
                 maybe_value = self.negamax(self.depth, -10000, 10000)
                 if maybe_value is not None:
                     val = - maybe_value
@@ -108,10 +106,12 @@ class Negamax(Player):
                     self.vals.append(val)
             # undo move
             self.board.undo_move()
-        if self.testing and self.alphabeta_pruning and not self.time_limit:
+        if self.testing and self.ab_pruning and not self.time_limit:
             # this checks that the same moves are being produced
             # it's turned off during iteritive deepening because it is slow
-            unpruned_moves = Negamax(self.board, self.is_white, self.depth, alphabeta_pruning=False, testing=True).get_moves()
+            nega_player = Negamax(self.board, self.is_white, self.depth, ab_pruning=False, testing=True)
+            unpruned_moves = nega_player.get_moves()
+            foo = unpruned_moves
             assert set(best_moves) == set(unpruned_moves)
         return best_moves
 
@@ -125,7 +125,7 @@ class Negamax(Player):
         moves = MoveGenerator(self.board).moves
         self.board.apply_move(moves[0])
         # get value of the first one to initalize max_val
-        if self.alphabeta_pruning:
+        if self.ab_pruning:
             # maybe_value catches none values for early return from timeouts
             maybe_value = self.negamax(depth - 1, -beta, -alpha)
             if maybe_value is not None:
@@ -138,7 +138,7 @@ class Negamax(Player):
         # undo move
         self.board.undo_move()
         #TODO: comment here to explain how this pruning works
-        if self.alphabeta_pruning:
+        if self.ab_pruning:
             if max_val > beta:
                 return max_val
             alpha = max(alpha, max_val)
@@ -154,7 +154,7 @@ class Negamax(Player):
             # apply move
             self.board.apply_move(move)
             # get the value of this move
-            if self.alphabeta_pruning:
+            if self.ab_pruning:
                 # maybe_value catches none values for early return from timeouts
                 maybe_value = self.negamax(depth - 1, -beta, -alpha)
                 if maybe_value is not None:
@@ -172,6 +172,7 @@ class Negamax(Player):
 
             if self.testing:
                 # compare the before state with the undone state
+                foo = self.board.get_char_state_val()
                 assert set(old_state) == set(self.board.get_char_state_val())
         return max_val
 
@@ -202,7 +203,7 @@ class IterativeDeepening(Player):
             self.time_elapsed = time.time() - self.start_time
             time_left = self.time_limit - self.time_elapsed
             new_moves = Negamax(board=self.board, is_white=self.is_white, depth=depth,
-                                alphabeta_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
+                                ab_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
         print "depth reached: " + str(depth)
         return old_moves
 
@@ -250,11 +251,49 @@ class Net(Player):
         if move is None:
             # send the move that the opponent just made
             if self.board.last_move:
-                self.client.write(MoveGenerator.move_to_char_move(self.board.last_move))
+                self.client.write(self.move_to_char_move(self.board.last_move))
             # get the new move
             move, server_board, game_times = self.client.get_message()
             # todo: verify state and update time
-        return [MoveGenerator.char_move_to_move(move)]
+        return [self.char_move_to_move(move)]
+
+    @staticmethod
+    def move_to_char_move(move):
+        move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
+                           (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
+                           (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
+                           (2, 0): "a4", (2, 1): "b4", (2, 2): "c4", (2, 3): "d4", (2, 4): "e4",
+                           (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
+                           (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
+                           }
+        return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
+
+    def char_move_to_move(self, char_move):
+        move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1": (5, 4),
+                           "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2": (4, 4),
+                           "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3": (3, 4),
+                           "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4": (2, 4),
+                           "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5": (1, 4),
+                           "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6": (0, 4),
+                           }
+        # if no move was passed, return nothing
+        if char_move == "":
+            return None
+        char_move = char_move[2:]
+        char_move = char_move.split("-")
+        src_cords = move_translator[char_move[0]]
+        dest_cords = move_translator[char_move[1]]
+        src = self.board.dict_board[src_cords]
+        dest = self.board.dict_board[dest_cords]
+        move = Move(src, dest)
+        return move
+
+    @staticmethod
+    def get_char_moves(moves):
+        char_moves = []
+        for move in moves:
+            char_moves.append(Net.move_to_char_move(move))
+        return char_moves
 
 
 

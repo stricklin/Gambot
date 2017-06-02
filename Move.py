@@ -12,3 +12,6 @@ class Move:
     def __hash__(self):
         return self.src.__hash__() * self.dest.__hash__()
 
+    def __str__(self):
+        return self.src.__str__() + " -> " + self.dest.__str__()
+

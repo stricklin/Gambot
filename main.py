@@ -2,7 +2,6 @@ import State
 import Player
 import argparse
 import time
-# TODO: interitive deepening
 # TODO: evaluator, change piece values for what phase the game is in. position: pawn structure, attacks/gaurding, xrays
 # double pawn worth less
 # isolated pawn worth less
@@ -42,8 +41,8 @@ class Game:
             move = player.get_move()
             # show the board state and the move about to be applied
             self.print_board_and_move(move)
-            # move might be None if game is over
             # TODO: this doesnt seem right, I bet I could get rid of checking if moves exist
+            # move might be None if game is over
             if move:
                 self.board.apply_move(move)
             # save the last move applied for net player to send to server
@@ -57,15 +56,17 @@ class Game:
             self.print_time(turn_duration)
 
     def end_game(self):
+        # remember who won before last moves are applied
+        winner = self.board.winner
         # apply one last move in case the game was won locally
-        if self.board.winner is not "draw":
+        if self.board.winner != "draw":
             if self.board.whites_turn:
                 self.take_move(self.white)
             else:
                 self.take_move(self.black)
         self.game_end = time.time()
         if self.display:
-            print "winner: " + self.board.winner
+            print "winner: " + winner
             print "Total time: " + str(self.game_end - self.game_start)
             print "White's total time: " + str(self.white_time)
             print "Blacks's total time: " + str(self.black_time)
@@ -98,12 +99,13 @@ def make_player(arguments, board, is_white, testing):
     elif player_type in ["nega"]:
         depth = int(get_arg_value(arguments, "d"))
         if "ab" in arguments:
-            player = player_type_lookup[player_type](board, is_white, depth, True, testing)
-        else:
-            player = player_type_lookup[player_type](board, is_white, depth, False, testing)
+            ab_pruning = True
+        player = player_type_lookup[player_type](board=board, is_white=is_white, depth=depth,
+                                                 ab_pruning=ab_pruning, testing=testing)
     elif player_type in ["id"]:
             time_limit = int(get_arg_value(arguments, "tl"))
-            player = player_type_lookup[player_type](board, is_white, time_limit, testing)
+            player = player_type_lookup[player_type](board=board, is_white=is_white,
+                                                     time_limit=time_limit, testing=testing)
     elif player_type in ["net"]:
             net_player = True
             username = get_arg_value(arguments, "u")
@@ -152,23 +154,21 @@ def get_arg_value(arguments, flag, delimiter=":"):
 if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(description="Play minichess!")
-    # todo: rewrite this shinanagins
     players_description = """
-    a player can only have one type. both a white_player and black_player player are required
     
-    types include:
-    h                                                       human player
-    r                                                       random player
-    nega <depth>                                            vanilla negamax player
-    ab <depth>                                              alpha-beta negamax player
-    net <username> <password> <offer/accept> <game number>  network player
+    player types include:
+    pt:h                                                                 human player
+    pt:r                                                                 random player
+    pt:nega ab d:<depth>                                                negamax player
+    pt:net u:<username> p:<password> gt:<offer/accept> gid:<game id>     network player
     
     examples:
-    -w r -b nega:5         
-    starts a game with a white_player random player and a black_player network player
+    -w pt:r -b pt:nega d:5         
+    starts a game with a white_player random player and a black_player negamax player
                            
-    -w ab:3 -b net:myusername:mypassword
-    starts a game with a white_player alpha-beta player and a black_player network player
+    -w pt:nega ab d:3 -b pt:net u:myusername p:mypassword gt:accept gn:12345
+    starts a game with a white_player alpha-beta player of depth 3 
+    and a black network player that will accept the game with id 12345
     """
 
     players = parser.add_argument_group("players")

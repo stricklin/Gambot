@@ -278,9 +278,9 @@ class AutoTest(unittest.TestCase):
         for i in range(len(self.tests)):
             board_prep = State.read_file(self.directory + self.tests[i])
             game_state = State.Board(board_prep)
-            move_generator = MoveGenerator(game_state)
+            moves = MoveGenerator(game_state).moves
             target = State.read_file(self.directory + self.targets[i])
-            assert set(target) == set(move_generator.get_char_moves())
+            assert set(target) == set(Player.Net.get_char_moves(moves))
 
 
 class Promotion(unittest.TestCase):
@@ -330,7 +330,7 @@ class Turn40Win(unittest.TestCase):
             ".....",
             "...p.",
             "....K"]
-    move = Move(Square((4, 3), "p"), Square((5, 4), "k"))
+    move = Move(Square((4, 3), "p"), Square((5, 4), "K"))
     winner = "black_player"
 
     def test_win(self):
@@ -347,7 +347,7 @@ class Turn40Draw(unittest.TestCase):
             ".....",
             "...p.",
             "....K"]
-    move = Move(Square((4, 3), "p"), Square((5, 3), "K"))
+    move = Move(Square((4, 3), "p"), Square((5, 3), "."))
     winner = "draw"
 
     def test_win(self):

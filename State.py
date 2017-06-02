@@ -1,7 +1,7 @@
 import sys
 from Square import Square
-from Move import Move
 from Undo import Undo
+from PieceList import PieceList
 
 
 def read_file(file):
@@ -21,8 +21,8 @@ class Board:
         self.whites_turn = players_turn == "W"
 
         # Store a char representation of the state
-        self.char_board = game_state[1:]
-        self.char_board = [list(x) for x in self.char_board]
+        init_board = game_state[1:]
+        init_board = [list(x) for x in init_board]
         # todo: update char board? or discard after init?
 
         # Set up invarients
@@ -54,10 +54,10 @@ class Board:
                             }
 
         # Set up piece lists and dict_board
-        self.white_piece_list = []
-        self.black_piece_list = []
+        self.white_piece_list = PieceList()
+        self.black_piece_list = PieceList()
         self.dict_board = {}
-        self.get_pieces()
+        self.read_init_board(init_board)
 
         # Set up undo stack
         self.undos = []
@@ -74,9 +74,9 @@ class Board:
         if self.winner is None:
             white_value = 0
             black_value = 0
-            for piece in self.white_piece_list:
+            for piece in self.white_piece_list.get_pieces():
                 white_value += self.piece_value[piece.piece]
-            for piece in self.black_piece_list:
+            for piece in self.black_piece_list.get_pieces():
                 black_value += self.piece_value[piece.piece.upper()]
             if self.whites_turn:
                 return white_value - black_value
@@ -97,30 +97,28 @@ class Board:
         # this function should never get here
         assert False
 
-    def get_pieces(self):
-        """Walks the state and adds each piece to the correct piece list"""
+    def read_init_board(self, init_board):
+        """Walks the init_board and adds each piece to the correct piece list"""
         for r in range(self.row_count):
             for c in range(self.col_count):
                 # todo: replace the column numbers with letters
-                char_piece = self.char_board[r][c]
-                self.place_piece(Square((r, c), char_piece), char_piece)
+                char_piece = init_board[r][c]
+                self.place_piece(Square((r, c), char_piece))
 
-    def place_piece(self, square, piece):
+    def place_piece(self, square):
         """
         Puts a piece into it's piece list and into the dict_board
         :param square: the square where the piece should go
-        :param piece: the char_rep of the piece
         :return: 
         """
-        square.piece = piece
-        self.dict_board[square.cords] = piece
+        self.dict_board[square.cords] = square
         # if square is not empty put piece into piece list
-        if piece == '.':
+        if square.piece == '.':
             return
-        if piece.isupper():
-            self.white_piece_list.append(square)
+        if square.piece.isupper():
+            self.white_piece_list.add(square)
         else:
-            self.black_piece_list.append(square)
+            self.black_piece_list.add(square)
 
     def pick_up_piece(self, square):
         """
@@ -128,23 +126,17 @@ class Board:
         :param square: the cords where the piece is on the dict_board
         :return: the char_rep of the picked up piece
         """
-        # see if the piece is black_player or white_player
-        char_piece = self.dict_board[square.cords]
-        # if the square is empty, return early
-        if char_piece != '.':
+        # if there is a piece, see which side it belongs to
+        if square.piece != '.':
             # TODO: This could be more DRY
-            is_white = char_piece.isupper()
+            is_white = square.piece.isupper()
             if is_white:
-                for piece in self.white_piece_list:
-                    if piece.cords == square.cords:
-                        self.white_piece_list.remove(piece)
-                        self.dict_board[square.cords] = '.'
+                    self.white_piece_list.remove(square)
             else:
-                for piece in self.black_piece_list:
-                    if piece == square:
-                        self.black_piece_list.remove(piece)
-                        self.dict_board[square.cords] = '.'
-        return char_piece
+                    self.black_piece_list.remove(square)
+        replacement_square = Square(square.cords, ".")
+        self.dict_board[square.cords] = replacement_square
+        return square.piece
 
     def print_char_state(self):
         """prints the state of the state to stdout"""
@@ -168,8 +160,7 @@ class Board:
         for r in range(self.row_count):
             row = ""
             for c in range(self.col_count):
-                # todo: maybe this should be a generator?
-                row += self.dict_board[(r, c)]
+                row += self.dict_board[(r, c)].piece
             state.append(row)
 
         return state
@@ -240,8 +231,7 @@ class Board:
             else:
                 piece = "q"
         # replace piece
-        self.place_piece(move.dest, piece)
-
+        self.place_piece(Square(move.dest.cords, piece))
 
         # update turn counter, switch sides, and flip value
         if not self.whites_turn:
@@ -267,16 +257,8 @@ class Board:
         self.winner = None
         self.whites_turn = not self.whites_turn
         self.value = undo.old_value
-        # pick up piece
-        piece = self.pick_up_piece(undo.old_dest)
-        # undo promotion
-        if undo.promotion:
-            if self.whites_turn:
-                piece = "P"
-            else:
-                piece = "p"
-        # put down piece
-        self.place_piece(undo.old_src, piece)
-        # replace captured piece
-        if undo.captured_piece != '.':
-            self.place_piece(undo.old_dest, undo.captured_piece)
+        # remove new dest
+        self.pick_up_piece(self.dict_board[undo.old_dest.cords])
+        # place old squares
+        self.place_piece(undo.old_src)
+        self.place_piece(undo.old_dest)

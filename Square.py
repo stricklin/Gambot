@@ -15,3 +15,7 @@ class Square:
 
     def __hash__(self):
         return self.row ** 2 * self.col ** 3 * ord(self.piece)
+
+    def __str__(self):
+        return str(self.cords) + " " + str(self.piece)
+
