@@ -210,8 +210,22 @@ class Board:
         """
 
         # store undo information
-        undo = Undo(move, self.value)
-        self.undos.append(undo)
+        self.undos.append(Undo(move, self.value))
+        # replace old src
+        piece = self.remove_square(move.src)
+        self.update_value_and_dest(move, piece)
+
+        # update turn counter, switch sides, and flip value
+        if not self.whites_turn:
+            self.turn_count += 1
+            # check for draw
+            if self.turn_count > 40:
+                if self.winner is None:
+                    self.draw()
+        self.whites_turn = not self.whites_turn
+        self.value = -self.value
+
+    def update_value_and_dest(self, move, piece):
 
         # remove captured piece
         captured_piece = self.remove_square(move.dest)
@@ -225,8 +239,6 @@ class Board:
             else:
                 self.value += self.piece_value[captured_piece.upper()]
 
-        # remove piece
-        piece = self.remove_square(move.src)
         # check for promotion:
         if piece.upper() == "P":
             # white promotion
@@ -239,93 +251,7 @@ class Board:
         # replace piece
         self.add_square(Square(move.dest.cords, piece))
 
-        # update turn counter, switch sides, and flip value
-        if not self.whites_turn:
-            self.turn_count += 1
-            # check for draw
-            if self.turn_count > 40:
-                if self.winner is None:
-                    self.draw()
-        self.whites_turn = not self.whites_turn
-        self.value = -self.value
-
     def undo_move(self):
-        """
-        changes the games state to what it was before the move was applied
-        :return: 
-        """
-        # get the old undo information
-        undo = self.undos.pop()
-        # update turn counter and  switch sides
-        if self.whites_turn:
-            self.turn_count -= 1
-        assert self.turn_count >= 0
-        self.winner = None
-        self.whites_turn = not self.whites_turn
-        self.value = undo.old_value
-        # remove new dest
-        self.remove_square(self.dict_board[undo.old_dest.cords])
-        # place old squares
-        self.add_square(undo.old_src)
-        self.add_square(undo.old_dest)
-
-    def future_apply_move(self, move):
-        """
-        applies a move to the state
-        :param move: the move to apply, is of form (src, dest) where src and dest are both Squares
-        :return: None
-        """
-
-        # store undo information
-        self.undos.append(Undo(move, self.value))
-        # remove old src
-        self.remove_square(move.src)
-        # update the value and dest
-        self.update_value_and_dest(move)
-        # update turn counter, switch sides, and flip value
-        if not self.whites_turn:
-            self.turn_count += 1
-            # check for draw
-            if self.turn_count > 40:
-                if self.winner is None:
-                    self.draw()
-        self.whites_turn = not self.whites_turn
-        self.value = -self.value
-
-    def update_value_and_dest(self, move):
-        # TODO: dont forget to fill this out
-        """
-        
-        :param move: 
-        :return: 
-        """
-        piece_to_move = move.src.piece
-        # check for promotion:
-        if piece_to_move.upper() == "P":
-            # white promotion
-            if piece_to_move == "P" and move.dest.row == 0:
-                piece_to_move = "Q"
-            # black promotion
-            elif piece_to_move == "p" and move.dest.row == 5:
-                piece_to_move = "q"
-            self.value += self.piece_value["Q"] - self.piece_value["P"]
-        # capture piece
-        if not move.dest.is_empty():
-            captured_piece = move.dest.piece
-            # update value and check for win by capture
-            # if a king was taken, win the game
-            if captured_piece == "k":
-                self.win("white_player")
-            elif captured_piece == "K":
-                self.win("black_player")
-            else:
-                self.value += self.piece_value[captured_piece.upper()]
-
-        # update dest
-        new_dest = Square(move.dest.cords, piece_to_move)
-        self.add_square(new_dest)
-
-    def future_undo_move(self):
         """
         changes the games state to what it was before the move was applied
         :return: 
