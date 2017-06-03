@@ -20,6 +20,13 @@ init = ["0 W",
         "....."]
 
 
+def test_moves(board_init, moves):
+    game_state = State.Board(board_init)
+    move_generator = MoveGenerator(game_state)
+    generated_moves = set(move_generator.moves)
+    assert set(moves) == set(generated_moves)
+
+
 class StartingBoard(unittest.TestCase):
     init = ["0 W",
             "kqbnr",
@@ -101,9 +108,7 @@ class PawnTest(unittest.TestCase):
     all_moves = p1_moves + p2_moves + p3_moves
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        assert set(self.all_moves) == set(move_generator.moves)
+        test_moves(self.init, self.all_moves)
 
 
 class KnightTest(unittest.TestCase):
@@ -128,10 +133,7 @@ class KnightTest(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = set(move_generator.moves)
-        assert set(self.N_moves) == set(move_generator.moves)
+        test_moves(self.init, self.N_moves)
 
 
 class BishopTest(unittest.TestCase):
@@ -158,15 +160,7 @@ class BishopTest(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = sorted(move_generator.moves)
-        bar = sorted(self.B_moves)
-        for index in range(len(foo)):
-            foo1 = foo[index]
-            bar1 = bar[index]
-            assert foo[index] == bar[index]
-        assert set(self.B_moves) == set(move_generator.moves)
+        test_moves(self.init, self.B_moves)
 
 
 class RookTest(unittest.TestCase):
@@ -191,10 +185,7 @@ class RookTest(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = set(move_generator.moves)
-        assert set(self.R_moves) == set(move_generator.moves)
+        test_moves(self.init, self.R_moves)
 
 
 class QueenTest(unittest.TestCase):
@@ -227,10 +218,7 @@ class QueenTest(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = set(move_generator.moves)
-        assert set(self.Q_moves) == set(move_generator.moves)
+        test_moves(self.init, self.Q_moves)
 
 
 class KingTest(unittest.TestCase):
@@ -255,10 +243,7 @@ class KingTest(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = set(move_generator.moves)
-        assert set(self.K_moves) == set(move_generator.moves)
+        test_moves(self.init, self.K_moves)
 
 
 class AutoTest(unittest.TestCase):
@@ -279,8 +264,9 @@ class AutoTest(unittest.TestCase):
             board_prep = State.read_file(self.directory + self.tests[i])
             game_state = State.Board(board_prep)
             moves = MoveGenerator(game_state).moves
-            target = State.read_file(self.directory + self.targets[i])
-            assert set(target) == set(Player.Net.get_char_moves(moves))
+            char_moves = set(Player.Net.get_char_moves(moves))
+            target = set(State.read_file(self.directory + self.targets[i]))
+            assert target == char_moves
 
 
 class Promotion(unittest.TestCase):
@@ -315,11 +301,11 @@ class Promotion(unittest.TestCase):
         move_generator = MoveGenerator(self.board)
         move = move_generator.moves[0]
         self.board.apply_move(move)
-        foo = self.board.get_char_state_val()
-        assert self.after == self.board.get_char_state_val()
+        applied_state = self.board.get_char_state_val()
+        assert self.after == applied_state
         self.board.undo_move()
-        foo = self.board.get_char_state_val()
-        assert self.before == self.board.get_char_state_val()
+        undone_state = self.board.get_char_state_val()
+        assert self.before == undone_state
 
 
 class Turn40Win(unittest.TestCase):
@@ -398,19 +384,12 @@ class StartingBoard(unittest.TestCase):
     ]
 
     def test_moves(self):
-        game_state = State.Board(self.init)
-        move_generator = MoveGenerator(game_state)
-        foo = move_generator.moves
-        for index in range(len(foo)):
-            foo1 = foo[index]
-            bar1 = self.moves[index]
-            assert foo1 == bar1
-        assert set(self.moves) == set(move_generator.moves)
+        test_moves(self.init, self.moves)
 
     def test_alpha_beta_and_do_undo(self):
         board = State.Board(self.init)
         white = Player.Random(board, True, testing=True)
-        black = Player.Negamax(board, False, 2, testing=True)
+        black = Player.Negamax(board, False, 2, ab_pruning=True, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 

@@ -13,9 +13,18 @@ class Square:
                 difference = ord(self.piece) - ord(other.piece)
         return difference
 
+    def __eq__(self, other):
+        if self.__cmp__(other) == 0:
+            return True
+        return False
+
     def __hash__(self):
         return self.row ** 2 * self.col ** 3 * ord(self.piece)
 
     def __str__(self):
         return str(self.cords) + " " + str(self.piece)
 
+    def is_empty(self):
+        if self.piece == ".":
+            return True
+        return False

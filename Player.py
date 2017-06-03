@@ -1,6 +1,7 @@
 from Client import Client
 from MoveGenerator import MoveGenerator
 from Move import Move
+from Square import Square
 import random
 import time
 
@@ -52,9 +53,9 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, depth, ab_pruning=False, time_limit=None, testing=False):
+    def __init__(self, board, is_white, max_depth, ab_pruning=False, time_limit=None, testing=False):
         Player.__init__(self, board, is_white, testing)
-        self.depth = depth
+        self.max_depth = max_depth
         self.ab_pruning = ab_pruning
         self.max_val = -10000
         self.time_limit = time_limit
@@ -79,20 +80,23 @@ class Negamax(Player):
             # return nothing if out of time
             if self.out_of_time():
                 return None
+            # save old state for checking undo
+            if self.testing:
+                old_state, old_pieces = self.get_state()
             # apply move
             self.board.apply_move(move)
             # get the value of this move
             if self.ab_pruning:
                 # this is the widest window possible for alpha beta
                 # maybe_value catches None values for early return from timeouts
-                maybe_value = self.negamax(self.depth, -10000, 10000)
+                maybe_value = self.negamax(self.max_depth, -10000, 10000)
                 if maybe_value is not None:
                     val = - maybe_value
                 else:
                     self.board.undo_move()
                     return None
             else:
-                val = - self.negamax(self.depth)
+                val = - self.negamax(self.max_depth)
             # if this is a better move, remember it
             if val > self.max_val:
                 self.max_val = val
@@ -106,23 +110,28 @@ class Negamax(Player):
                     self.vals.append(val)
             # undo move
             self.board.undo_move()
+            self.check_undo(old_state, old_pieces, move, self.max_depth)
+
         if self.testing and self.ab_pruning and not self.time_limit:
             # this checks that the same moves are being produced
             # it's turned off during iteritive deepening because it is slow
-            nega_player = Negamax(self.board, self.is_white, self.depth, ab_pruning=False, testing=True)
+            nega_player = Negamax(self.board, self.is_white, self.max_depth, ab_pruning=False, testing=True)
             unpruned_moves = nega_player.get_moves()
-            foo = unpruned_moves
             assert set(best_moves) == set(unpruned_moves)
+
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
         # return nothing if out of time
         if self.out_of_time():
             return None
-        # check if the game is done or depth is reached
+        # check if the game is done or max_depth is reached
         if depth <= 0 or self.board.winner:
             return self.board.value
         moves = MoveGenerator(self.board).moves
+        if self.testing:
+            # grab the before state to test undo
+            old_state, old_pieces = self.get_state()
         self.board.apply_move(moves[0])
         # get value of the first one to initalize max_val
         if self.ab_pruning:
@@ -137,6 +146,7 @@ class Negamax(Player):
             max_val = -self.negamax(depth - 1)
         # undo move
         self.board.undo_move()
+        self.check_undo(old_state, old_pieces, moves[0], depth)
         #TODO: comment here to explain how this pruning works
         if self.ab_pruning:
             if max_val > beta:
@@ -149,8 +159,8 @@ class Negamax(Player):
             if self.out_of_time():
                 return None
             if self.testing:
-                # grab the before state to test undo
-                old_state = self.board.get_char_state_val()
+                # grab the old state to check undo
+                old_state, old_pieces = self.get_state()
             # apply move
             self.board.apply_move(move)
             # get the value of this move
@@ -161,6 +171,7 @@ class Negamax(Player):
                     val = - maybe_value
                 else:
                     self.board.undo_move()
+                    self.check_undo(old_state, move, depth)
                     return None
             else:
                 val = -self.negamax(depth - 1)
@@ -169,12 +180,27 @@ class Negamax(Player):
                 max_val = val
             # undo move
             self.board.undo_move()
-
-            if self.testing:
-                # compare the before state with the undone state
-                foo = self.board.get_char_state_val()
-                assert set(old_state) == set(self.board.get_char_state_val())
+            self.check_undo(old_state, old_pieces, move, depth)
         return max_val
+
+    def get_state(self):
+        old_state = self.board.get_char_state_val()
+        if self.is_white:
+            old_pieces = self.board.white_piece_list.get_pieces()
+        else:
+            old_pieces = self.board.white_piece_list.get_pieces()
+        return old_state, old_pieces
+
+    def check_undo(self, old_state, old_pieces, move, depth):
+        if self.testing:
+            # compare the old state with the undone state
+            undone_state, undone_pieces = self.get_state()
+            for index in range(len(undone_pieces)):
+                old = sorted(old_pieces)[index]
+                undone = sorted(undone_pieces)[index]
+                assert old == undone
+            assert set(old_pieces) == set(undone_pieces)
+            assert set(old_state) == set(undone_state)
 
     def out_of_time(self):
         # check if iteritive deepening
@@ -202,7 +228,7 @@ class IterativeDeepening(Player):
             old_moves = new_moves
             self.time_elapsed = time.time() - self.start_time
             time_left = self.time_limit - self.time_elapsed
-            new_moves = Negamax(board=self.board, is_white=self.is_white, depth=depth,
+            new_moves = Negamax(board=self.board, is_white=self.is_white, max_depth=depth,
                                 ab_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
         print "depth reached: " + str(depth)
         return old_moves
@@ -277,7 +303,7 @@ class Net(Player):
                            "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6": (0, 4),
                            }
         # if no move was passed, return nothing
-        if char_move == "":
+        if "-" not in char_move:
             return None
         char_move = char_move[2:]
         char_move = char_move.split("-")

@@ -23,7 +23,6 @@ class Board:
         # Store a char representation of the state
         init_board = game_state[1:]
         init_board = [list(x) for x in init_board]
-        # todo: update char board? or discard after init?
 
         # Set up invarients
         self.row_count = 6
@@ -74,10 +73,10 @@ class Board:
         if self.winner is None:
             white_value = 0
             black_value = 0
-            for piece in self.white_piece_list.get_pieces():
-                white_value += self.piece_value[piece.piece]
-            for piece in self.black_piece_list.get_pieces():
-                black_value += self.piece_value[piece.piece.upper()]
+            for square in self.white_piece_list.get_pieces():
+                white_value += self.piece_value[square.piece]
+            for square in self.black_piece_list.get_pieces():
+                black_value += self.piece_value[square.piece.upper()]
             if self.whites_turn:
                 return white_value - black_value
             else:
@@ -103,39 +102,41 @@ class Board:
             for c in range(self.col_count):
                 # todo: replace the column numbers with letters
                 char_piece = init_board[r][c]
-                self.place_piece(Square((r, c), char_piece))
+                self.add_square(Square((r, c), char_piece))
 
-    def place_piece(self, square):
+    def add_square(self, square):
         """
-        Puts a piece into it's piece list and into the dict_board
-        :param square: the square where the piece should go
+        adds a square to the dict_board and if the square is not empty,
+        adds that square to it's piece list
+        :param square: the square to add
         :return: 
         """
         self.dict_board[square.cords] = square
         # if square is not empty put piece into piece list
-        if square.piece == '.':
+        if square.is_empty():
             return
         if square.piece.isupper():
             self.white_piece_list.add(square)
         else:
             self.black_piece_list.add(square)
 
-    def pick_up_piece(self, square):
+    def remove_square(self, square):
         """
-        Takes a piece out of the piece list and updates the dict_board
-        :param square: the cords where the piece is on the dict_board
-        :return: the char_rep of the picked up piece
+        if the square is not empty, it is removed from the dict_board
+        and it's piece list
+        :param square: the square to remove
+        :return: the piece inside the square
         """
         # if there is a piece, see which side it belongs to
-        if square.piece != '.':
+        if not square.is_empty():
             # TODO: This could be more DRY
             is_white = square.piece.isupper()
             if is_white:
                     self.white_piece_list.remove(square)
             else:
                     self.black_piece_list.remove(square)
-        replacement_square = Square(square.cords, ".")
-        self.dict_board[square.cords] = replacement_square
+            replacement_square = Square(square.cords, ".")
+            self.dict_board[square.cords] = replacement_square
         return square.piece
 
     def print_char_state(self):
@@ -160,7 +161,11 @@ class Board:
         for r in range(self.row_count):
             row = ""
             for c in range(self.col_count):
-                row += self.dict_board[(r, c)].piece
+                square = self.dict_board[(r, c)].piece
+                # the "." is too small by itself, ". " is easier to read
+                if square == ".":
+                    square = "."
+                row += square
             state.append(row)
 
         return state
@@ -205,34 +210,11 @@ class Board:
         """
 
         # store undo information
-        undo = Undo(self.dict_board, move, self.value)
-        self.undos.append(undo)
-
-        # remove captured piece
-        captured_piece = self.pick_up_piece(move.dest)
-        if captured_piece != '.':
-            # update value and check for win by capture
-            # if a king was taken, win the game
-            if captured_piece == "k":
-                self.win("white_player")
-            elif captured_piece == "K":
-                self.win("black_player")
-            else:
-                self.value += self.piece_value[captured_piece.upper()]
-
-        # remove piece
-        piece = self.pick_up_piece(move.src)
-        # promote pawns
-        if undo.promotion:
-            self.value += self.piece_value['Q']
-            self.value -= self.piece_value['P']
-            if self.whites_turn:
-                piece = "Q"
-            else:
-                piece = "q"
-        # replace piece
-        self.place_piece(Square(move.dest.cords, piece))
-
+        self.undos.append(Undo(move, self.value))
+        # remove old src
+        self.remove_square(move.src)
+        # update the value and dest
+        self.update_value_and_dest(move)
         # update turn counter, switch sides, and flip value
         if not self.whites_turn:
             self.turn_count += 1
@@ -242,6 +224,39 @@ class Board:
                     self.draw()
         self.whites_turn = not self.whites_turn
         self.value = -self.value
+
+    def update_value_and_dest(self, move):
+        # TODO: dont forget to fill this out
+        """
+        
+        :param move: 
+        :return: 
+        """
+        piece_to_move = move.src.piece
+        # check for promotion:
+        if piece_to_move.upper() == "P":
+            # white promotion
+            if piece_to_move == "P" and move.dest.row == 0:
+                piece_to_move = "Q"
+            # black promotion
+            elif piece_to_move == "p" and move.dest.row == 5:
+                piece_to_move = "q"
+            self.value += self.piece_value["Q"] - self.piece_value["P"]
+        # capture piece
+        if not move.dest.is_empty():
+            captured_piece = move.dest.piece
+            # update value and check for win by capture
+            # if a king was taken, win the game
+            if captured_piece == "k":
+                self.win("white_player")
+            elif captured_piece == "K":
+                self.win("black_player")
+            else:
+                self.value += self.piece_value[captured_piece.upper()]
+
+        # update dest
+        new_dest = Square(move.dest.cords, piece_to_move)
+        self.add_square(new_dest)
 
     def undo_move(self):
         """
@@ -258,7 +273,9 @@ class Board:
         self.whites_turn = not self.whites_turn
         self.value = undo.old_value
         # remove new dest
-        self.pick_up_piece(self.dict_board[undo.old_dest.cords])
-        # place old squares
-        self.place_piece(undo.old_src)
-        self.place_piece(undo.old_dest)
+        new_dest = self.dict_board[undo.old_dest.cords]
+        new_src = self.dict_board[undo.old_src.cords]
+        self.remove_square(new_dest)
+        # replace old squares
+        self.add_square(undo.old_src)
+        self.add_square(undo.old_dest)

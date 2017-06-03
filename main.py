@@ -100,7 +100,9 @@ def make_player(arguments, board, is_white, testing):
         depth = int(get_arg_value(arguments, "d"))
         if "ab" in arguments:
             ab_pruning = True
-        player = player_type_lookup[player_type](board=board, is_white=is_white, depth=depth,
+        else:
+            ab_pruning = False
+        player = player_type_lookup[player_type](board=board, is_white=is_white, max_depth=depth,
                                                  ab_pruning=ab_pruning, testing=testing)
     elif player_type in ["id"]:
             time_limit = int(get_arg_value(arguments, "tl"))
@@ -159,7 +161,7 @@ if __name__ == "__main__":
     player types include:
     pt:h                                                                 human player
     pt:r                                                                 random player
-    pt:nega ab d:<depth>                                                negamax player
+    pt:nega ab d:<max_depth>                                                negamax player
     pt:net u:<username> p:<password> gt:<offer/accept> gid:<game id>     network player
     
     examples:
@@ -167,7 +169,7 @@ if __name__ == "__main__":
     starts a game with a white_player random player and a black_player negamax player
                            
     -w pt:nega ab d:3 -b pt:net u:myusername p:mypassword gt:accept gn:12345
-    starts a game with a white_player alpha-beta player of depth 3 
+    starts a game with a white_player alpha-beta player of max_depth 3 
     and a black network player that will accept the game with id 12345
     """
 

@@ -13,11 +13,11 @@ class MoveGenerator:
     def __init__(self, board):
         """takes a state, gets the pieces, gets all legal moves"""
         self.board = board
-        self.pieces = self.find_pieces()
+        self.pieces = self.get_pieces()
         self.moves = []
         self.find_moves()
 
-    def find_pieces(self):
+    def get_pieces(self):
         """ the pieces of the side on move"""
         if self.board.whites_turn:
             return self.board.white_piece_list.get_pieces()
