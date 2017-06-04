@@ -432,6 +432,36 @@ class Ordering(unittest.TestCase):
         assert self.pawnKing.__cmp__(self.Kingpawn) < 0
 
 
+class PawnEval(unittest.TestCase):
+    doubled_init = ["0 W",
+                   ".....",
+                   ".....",
+                   "P....",
+                   "P....",
+                   ".....",
+                   "....."]
+    doubled_board = State.Board(doubled_init)
+    expected_doubled_value = 2 * doubled_board.doubled_pawn_value
+
+    gaurded_init = ["0 W",
+                    ".....",
+                    ".....",
+                    "P.P..",
+                    ".P...",
+                    ".....",
+                    "....."]
+    gaurded_board = State.Board(gaurded_init)
+    expected_gaurded_value = 2 * gaurded_board.gaurded_pawn_value
+
+    def test_doubled_pawn_eval(self):
+        self.doubled_board.evaluate_pawns(True)
+        pawn_value = self.doubled_board.white_pawn_value
+        assert self.expected_doubled_value == pawn_value
+
+    def test_pass_gaurded_pawn_eval(self):
+        self.gaurded_board.evaluate_pawns(True)
+        pawn_value = self.gaurded_board.white_pawn_value
+        assert self.expected_gaurded_value == pawn_value
 
 # todo: shortest win, longest lost tests
 

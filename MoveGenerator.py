@@ -13,20 +13,24 @@ class MoveGenerator:
     def __init__(self, board):
         """takes a state, gets the pieces, gets all legal moves"""
         self.board = board
-        self.pieces = self.get_pieces()
+        self.pieces = self.get_all_pieces()
         self.moves = []
-        self.find_moves()
+        self.get_moves(self.pieces)
 
-    def get_pieces(self):
+    def get_all_pieces(self):
         """ the pieces of the side on move"""
         if self.board.whites_turn:
             return self.board.white_piece_list.get_pieces()
         else:
             return self.board.black_piece_list.get_pieces()
 
-    def find_moves(self):
-        """finds all the moves for all the pieces"""
-        for piece in self.pieces:
+    def get_all_moves(self):
+        """gets all the moves for all the pieces"""
+        self.get_moves(self.get_all_pieces())
+
+    def get_moves(self, pieces):
+        """gets all the moves for the specified pieces"""
+        for piece in pieces:
             self.find_pieces_moves(piece)
 
     def find_pieces_moves(self, src):

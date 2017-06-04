@@ -2,14 +2,6 @@ import State
 import Player
 import argparse
 import time
-# TODO: evaluator, change piece values for what phase the game is in. position: pawn structure, attacks/gaurding, xrays
-# double pawn worth less
-# isolated pawn worth less
-# egde pawn worth less
-# passed pawns worth more
-# advanced pawns worth more
-# keeping the king and queen back towards the homerow
-# singular extention
 # TODO: Transposition table
 # TODO: pondering
 # TODO: opening book
@@ -157,7 +149,9 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(description="Play minichess!")
     players_description = """
-    
+    game types include:
+    -p adds pawn evaluation
+    -t runs in testing mode
     player types include:
     pt:h                                                                 human player
     pt:r                                                                 random player
@@ -165,8 +159,9 @@ if __name__ == "__main__":
     pt:net u:<username> p:<password> gt:<offer/accept> gid:<game id>     network player
     
     examples:
-    -w pt:r -b pt:nega d:5         
+    -t -p -w pt:r -b pt:nega d:5         
     starts a game with a white_player random player and a black_player negamax player
+    with testing and pawn evaluation turned on
                            
     -w pt:nega ab d:3 -b pt:net u:myusername p:mypassword gt:accept gn:12345
     starts a game with a white_player alpha-beta player of max_depth 3 
@@ -175,6 +170,7 @@ if __name__ == "__main__":
 
     players = parser.add_argument_group("players")
     parser.add_argument("-t", "--testing", action="store_true")
+    parser.add_argument("-p", "--pawn_evaluation", action="store_true")
     players.add_argument("-w", "--white", nargs="+", required=True)
     players.add_argument("-b", "--black", nargs="+", required=True)
     parser.add_argument("-f", "--file", nargs=1, required=False,
@@ -192,7 +188,7 @@ if __name__ == "__main__":
                              ".....",
                              ".....",
                              "PPPPP",
-                             "RNBQK"])
+                             "RNBQK"], args.pawn_evaluation)
     if "net" in args.white or "net" in args.black:
         if "net" in args.white and "net" in args.black:
             exit("unable to have 2 net players")

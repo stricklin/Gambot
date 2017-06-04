@@ -110,7 +110,8 @@ class Negamax(Player):
                     self.vals.append(val)
             # undo move
             self.board.undo_move()
-            self.check_undo(old_state, old_pieces, move, self.max_depth)
+            if self.testing:
+                self.check_undo(old_state, old_pieces)
 
         if self.testing and self.ab_pruning and not self.time_limit:
             # this checks that the same moves are being produced
@@ -146,7 +147,8 @@ class Negamax(Player):
             max_val = -self.negamax(depth - 1)
         # undo move
         self.board.undo_move()
-        self.check_undo(old_state, old_pieces, moves[0], depth)
+        if self.testing:
+            self.check_undo(old_state, old_pieces)
         #TODO: comment here to explain how this pruning works
         if self.ab_pruning:
             if max_val > beta:
@@ -171,7 +173,8 @@ class Negamax(Player):
                     val = - maybe_value
                 else:
                     self.board.undo_move()
-                    self.check_undo(old_state, move, depth)
+                    if self.testing:
+                        self.check_undo(old_state, old_pieces)
                     return None
             else:
                 val = -self.negamax(depth - 1)
@@ -180,7 +183,8 @@ class Negamax(Player):
                 max_val = val
             # undo move
             self.board.undo_move()
-            self.check_undo(old_state, old_pieces, move, depth)
+            if self.testing:
+                self.check_undo(old_state, old_pieces)
         return max_val
 
     def get_state(self):
@@ -191,16 +195,15 @@ class Negamax(Player):
             old_pieces = self.board.white_piece_list.get_pieces()
         return old_state, old_pieces
 
-    def check_undo(self, old_state, old_pieces, move, depth):
-        if self.testing:
-            # compare the old state with the undone state
-            undone_state, undone_pieces = self.get_state()
-            for index in range(len(undone_pieces)):
-                old = sorted(old_pieces)[index]
-                undone = sorted(undone_pieces)[index]
-                assert old == undone
-            assert set(old_pieces) == set(undone_pieces)
-            assert set(old_state) == set(undone_state)
+    def check_undo(self, old_state, old_pieces):
+        # compare the old state with the undone state
+        undone_state, undone_pieces = self.get_state()
+        for index in range(len(undone_pieces)):
+            old = sorted(old_pieces)[index]
+            undone = sorted(undone_pieces)[index]
+            assert old == undone
+        assert set(old_pieces) == set(undone_pieces)
+        assert set(old_state) == set(undone_state)
 
     def out_of_time(self):
         # check if iteritive deepening

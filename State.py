@@ -1,5 +1,6 @@
 import sys
 from Square import Square
+from MoveGenerator import MoveGenerator
 from Undo import Undo
 from PieceList import PieceList
 
@@ -14,7 +15,8 @@ def read_stdin():
 
 class Board:
 
-    def __init__(self, game_state):
+    def __init__(self, game_state, pawn_evaluation=False):
+        self.pawn_evaluation = pawn_evaluation
         # Separate the turn info from the state and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
@@ -51,6 +53,8 @@ class Board:
                             "Q": 700,
                             "K": 10000,
                             }
+        self.gaurded_pawn_value = 1.5 * self.piece_value["P"]
+        self.doubled_pawn_value = -.5 * self.piece_value["P"]
 
         # Set up piece lists and dict_board
         self.white_piece_list = PieceList()
@@ -65,6 +69,8 @@ class Board:
         self.winner = None
 
         # Get value of pieces
+        self.white_pawn_value = 0
+        self.black_pawn_value = 0
         self.value = self.get_value()
 
     def get_value(self):
@@ -73,6 +79,7 @@ class Board:
         if self.winner is None:
             white_value = 0
             black_value = 0
+
             for square in self.white_piece_list.get_pieces():
                 white_value += self.piece_value[square.piece]
             for square in self.black_piece_list.get_pieces():
@@ -103,6 +110,63 @@ class Board:
                 # todo: replace the column numbers with letters
                 char_piece = init_board[r][c]
                 self.add_square(Square((r, c), char_piece))
+
+    def evaluate_all_pawns(self):
+        self.evaluate_pawns(True)
+        self.evaluate_pawns(False)
+
+    def evaluate_pawns(self, is_white):
+        total_value = 0
+        if is_white:
+            self.value -= self.white_pawn_value
+            pawns = self.white_piece_list.get_pieces("P")
+        else:
+            self.value -= self.black_pawn_value
+            pawns = self.black_piece_list.get_pieces("P")
+        # todo: should i negate the pawn values?
+        # negate original value of pawns
+        # total_value = -len(pawns) * pawn_value
+
+        # turn squares into cords and cols
+        cord_pawns = []
+        col_pawns = []
+        for pawn in pawns:
+            cord_pawns.append(pawn.cords)
+            col_pawns.append(pawn.col)
+
+        for pawn_index in range(len(pawns)):
+            # add for gaurding pawns
+            total_value += self.evaluate_gaurding_pawns(cord_pawns[pawn_index], cord_pawns, is_white)
+            # subtract for passed pawns
+            total_value += self.evaluate_doubled_pawns(col_pawns[pawn_index], col_pawns, pawn_index)
+        if is_white:
+            self.white_pawn_value = total_value
+            self.value += self.white_pawn_value
+        else:
+            self.black_pawn_value = total_value
+            self.value += self.black_pawn_value
+
+    def evaluate_gaurding_pawns(self, cord_pawn, cord_pawns, is_white):
+        gaurd_value = 0
+        if is_white:
+            forward = -1
+        else:
+            forward = 1
+        west_attact = (cord_pawn[0] + forward, cord_pawn[1] - 1)
+        east_attact = (cord_pawn[0] + forward, cord_pawn[1] + 1)
+        if west_attact in cord_pawns:
+            gaurd_value += self.gaurded_pawn_value
+        if east_attact in cord_pawns:
+            gaurd_value += self.gaurded_pawn_value
+        return gaurd_value
+
+    def evaluate_doubled_pawns(self, col_pawn, col_pawns, pawn_index):
+        passed_value = 0
+        for index in range(len(col_pawns)):
+            if index != pawn_index:
+                if col_pawn == col_pawns[index]:
+                    passed_value += self.doubled_pawn_value
+        return passed_value
 
     def add_square(self, square):
         """
@@ -213,20 +277,6 @@ class Board:
         self.undos.append(Undo(move, self.value))
         # replace old src
         piece = self.remove_square(move.src)
-        self.update_value_and_dest(move, piece)
-
-        # update turn counter, switch sides, and flip value
-        if not self.whites_turn:
-            self.turn_count += 1
-            # check for draw
-            if self.turn_count > 40:
-                if self.winner is None:
-                    self.draw()
-        self.whites_turn = not self.whites_turn
-        self.value = -self.value
-
-    def update_value_and_dest(self, move, piece):
-
         # remove captured piece
         captured_piece = self.remove_square(move.dest)
         if captured_piece != '.':
@@ -238,9 +288,11 @@ class Board:
                 self.win("black_player")
             else:
                 self.value += self.piece_value[captured_piece.upper()]
-
-        # check for promotion:
+        # if the piece is a pawn:
         if piece.upper() == "P":
+            # update pawn values
+            if self.pawn_evaluation:
+                self.evaluate_pawns(self.whites_turn)
             # white promotion
             if piece == "P" and move.dest.row == 0:
                 piece = "Q"
@@ -250,6 +302,15 @@ class Board:
             self.value += self.piece_value["Q"] - self.piece_value["P"]
         # replace piece
         self.add_square(Square(move.dest.cords, piece))
+        # update turn counter, switch sides, and flip value
+        if not self.whites_turn:
+            self.turn_count += 1
+            # check for draw
+            if self.turn_count > 40:
+                if self.winner is None:
+                    self.draw()
+        self.whites_turn = not self.whites_turn
+        self.value = -self.value
 
     def undo_move(self):
         """
@@ -267,7 +328,6 @@ class Board:
         self.value = undo.old_value
         # remove new dest
         new_dest = self.dict_board[undo.old_dest.cords]
-        new_src = self.dict_board[undo.old_src.cords]
         self.remove_square(new_dest)
         # replace old squares
         self.add_square(undo.old_src)
