@@ -91,13 +91,16 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, max_depth, ab_pruning=False, time_limit=None, testing=False):
+    def __init__(self, board, is_white, max_depth, ab_pruning=False, time_limit=None,
+                 testing=False, print_visited=True):
         Player.__init__(self, board, is_white, testing)
         self.max_depth = max_depth
         self.ab_pruning = ab_pruning
+        self.print_visited = print_visited
         self.max_val = -10000
         self.time_limit = time_limit
         self.start_time = None
+        self.states_visited = 0
         # vals is for testing
         self.vals = []
 
@@ -123,18 +126,19 @@ class Negamax(Player):
                 old_state, old_pieces, old_zob_hash = self.get_state()
             # apply move
             self.board.apply_move(move)
+            self.states_visited += 1
             # get the value of this move
             if self.ab_pruning:
                 # this is the widest window possible for alpha beta
                 # maybe_value catches None values for early return from timeouts
-                maybe_value = self.negamax(self.max_depth, -10000, 10000)
+                maybe_value = self.negamax(0, -10000, 10000)
                 if maybe_value is not None:
                     val = - maybe_value
                 else:
                     self.board.undo_move()
                     return None
             else:
-                val = - self.negamax(self.max_depth)
+                val = - self.negamax(0)
             # if this is a better move, remember it
             if val > self.max_val:
                 self.max_val = val
@@ -154,10 +158,12 @@ class Negamax(Player):
         if self.testing and self.ab_pruning and not self.time_limit:
             # this checks that the same moves are being produced
             # it's turned off during iteritive deepening because it is slow
-            nega_player = Negamax(self.board, self.is_white, self.max_depth, ab_pruning=False, testing=True)
+            nega_player = Negamax(self.board, self.is_white, self.max_depth, ab_pruning=False,
+                                  testing=True, print_visited=False)
             unpruned_moves = nega_player.get_moves()
             assert set(best_moves) == set(unpruned_moves)
-
+        if self.print_visited:
+            print str(self.states_visited) + " states visited"
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
@@ -165,24 +171,25 @@ class Negamax(Player):
         if self.out_of_time():
             return None
         # check if the game is done or max_depth is reached
-        if depth <= 0 or self.board.winner:
+        if depth >= self.max_depth or self.board.winner:
             return self.board.value
         moves = MoveGenerator(self.board).moves
         if self.testing:
             # grab the before state to test undo
             old_state, old_pieces, old_zob_hash = self.get_state()
         self.board.apply_move(moves[0])
+        self.states_visited += 1
         # get value of the first one to initalize max_val
         if self.ab_pruning:
             # maybe_value catches none values for early return from timeouts
-            maybe_value = self.negamax(depth - 1, -beta, -alpha)
+            maybe_value = self.negamax(depth + 1, -beta, -alpha)
             if maybe_value is not None:
                 max_val = - maybe_value
             else:
                 self.board.undo_move()
                 return None
         else:
-            max_val = -self.negamax(depth - 1)
+            max_val = -self.negamax(depth + 1)
         # undo move
         self.board.undo_move()
         if self.testing:
@@ -203,10 +210,11 @@ class Negamax(Player):
                 old_state, old_pieces, old_zob_hash = self.get_state()
             # apply move
             self.board.apply_move(move)
+            self.states_visited += 1
             # get the value of this move
             if self.ab_pruning:
                 # maybe_value catches none values for early return from timeouts
-                maybe_value = self.negamax(depth - 1, -beta, -alpha)
+                maybe_value = self.negamax(depth + 1, -beta, -alpha)
                 if maybe_value is not None:
                     val = - maybe_value
                 else:
@@ -215,7 +223,7 @@ class Negamax(Player):
                         self.check_undo(old_state, old_pieces)
                     return None
             else:
-                val = -self.negamax(depth - 1)
+                val = -self.negamax(depth + 1)
             # remember the best value
             if val > max_val:
                 max_val = val
