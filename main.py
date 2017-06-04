@@ -95,12 +95,20 @@ def make_player(arguments, board, is_white, testing):
             ab_pruning = True
         else:
             ab_pruning = False
+        if "tt" in arguments:
+            use_t_table = True
+        else:
+            use_t_table = False
         player = player_type_lookup[player_type](board=board, is_white=is_white, max_depth=depth,
-                                                 ab_pruning=ab_pruning, testing=testing)
+                                                 ab_pruning=ab_pruning, use_t_table=use_t_table, testing=testing)
     elif player_type in ["id"]:
+        if "tt" in arguments:
+            use_t_table = True
+        else:
+            use_t_table = False
             time_limit = int(get_arg_value(arguments, "tl"))
             player = player_type_lookup[player_type](board=board, is_white=is_white,
-                                                     time_limit=time_limit, testing=testing)
+                                                     time_limit=time_limit, use_t_table=use_t_table, testing=testing)
     elif player_type in ["net"]:
             net_player = True
             username = get_arg_value(arguments, "u")

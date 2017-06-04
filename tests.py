@@ -8,8 +8,11 @@ import numpy as np
 from Square import Square
 from Move import Move
 from Undo import Undo
+from TTable import TTable
+from TTableEntry import TTableEntry
 
 
+# todo: shortest win, longest lost tests
 # having a blank state is handy
 init = ["0 W",
         ".....",
@@ -510,7 +513,22 @@ class PawnEval(unittest.TestCase):
         pawn_value = self.gaurded_board.white_pawn_value
         assert self.expected_gaurded_value == pawn_value
 
-# todo: shortest win, longest lost tests
+
+class TTable(unittest.TestCase):
+    table = TTable(5)
+    entries = []
+    for index in range(100):
+        value = index
+        depth = index % 10
+        zob_hash = index
+        entry = TTableEntry(value, depth, zob_hash)
+        entries.append(entry)
+
+    def test_get(self):
+        for entry in self.entries:
+            self.table.try_to_add(entry)
+        entry = self.table.entrys_by_zob_hash[99]
+        assert entry
 
 if __name__ == "__main__":
     unittest.main()

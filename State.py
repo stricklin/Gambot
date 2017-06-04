@@ -284,7 +284,6 @@ class Board:
         :param move: the move to apply, is of form (src, dest) where src and dest are both Squares
         :return: None
         """
-
         # store undo information
         self.undos.append(Undo(move, self.value))
         # replace old src

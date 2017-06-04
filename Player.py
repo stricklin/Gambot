@@ -2,6 +2,8 @@ from Client import Client
 from MoveGenerator import MoveGenerator
 from Move import Move
 from Square import Square
+from TTable import TTable
+from TTableEntry import TTableEntry
 import random
 import time
 
@@ -91,18 +93,24 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, max_depth, ab_pruning=False, time_limit=None,
+    def __init__(self, board, is_white, max_depth, ab_pruning=False, use_t_table=False, time_limit=None,
                  testing=False, print_visited=True):
         Player.__init__(self, board, is_white, testing)
         self.max_depth = max_depth
         self.ab_pruning = ab_pruning
-        self.print_visited = print_visited
+        if use_t_table:
+            self.t_table = TTable()
+        else:
+            self.t_table = None
+        self.print_node_hit_info = print_visited
         self.max_val = -10000
         self.time_limit = time_limit
         self.start_time = None
         self.states_visited = 0
+        self.t_table_hits = 0
         # vals is for testing
         self.vals = []
+
 
     def get_moves(self):
         assert self.is_white == self.board.whites_turn
@@ -127,29 +135,15 @@ class Negamax(Player):
             # apply move
             self.board.apply_move(move)
             self.states_visited += 1
-            # get the value of this move
-            if self.ab_pruning:
-                # this is the widest window possible for alpha beta
-                # maybe_value catches None values for early return from timeouts
-                maybe_value = self.negamax(0, -10000, 10000)
-                if maybe_value is not None:
-                    val = - maybe_value
-                else:
-                    self.board.undo_move()
-                    return None
-            else:
-                val = - self.negamax(0)
-            # if this is a better move, remember it
-            if val > self.max_val:
-                self.max_val = val
-                best_moves = [move]
+            val = self.get_board_value(0, -10000, 10000)
+            if val is None:
+                # val could only be none because of timeout
+                self.board.undo_move()
                 if self.testing:
-                    self.vals = [val]
-            # if more than one move is best, keep them all
-            elif val == self.max_val:
-                best_moves.append(move)
-                if self.testing:
-                    self.vals.append(val)
+                    self.check_undo(old_state, old_pieces, old_zob_hash)
+                return None
+            self.update_t_table(0)
+            best_moves = self.update_best_moves(move, best_moves, val)
             # undo move
             self.board.undo_move()
             if self.testing:
@@ -162,8 +156,9 @@ class Negamax(Player):
                                   testing=True, print_visited=False)
             unpruned_moves = nega_player.get_moves()
             assert set(best_moves) == set(unpruned_moves)
-        if self.print_visited:
+        if self.print_node_hit_info:
             print str(self.states_visited) + " states visited"
+            print str(self.t_table_hits) + " TTable hits"
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
@@ -180,16 +175,13 @@ class Negamax(Player):
         self.board.apply_move(moves[0])
         self.states_visited += 1
         # get value of the first one to initalize max_val
-        if self.ab_pruning:
-            # maybe_value catches none values for early return from timeouts
-            maybe_value = self.negamax(depth + 1, -beta, -alpha)
-            if maybe_value is not None:
-                max_val = - maybe_value
-            else:
-                self.board.undo_move()
-                return None
-        else:
-            max_val = -self.negamax(depth + 1)
+        max_val = self.get_board_value(depth, alpha, beta)
+        if max_val is None:
+            self.board.undo_move()
+            if self.testing:
+                self.check_undo(old_state, old_pieces, old_zob_hash)
+            return None
+        self.update_t_table(depth)
         # undo move
         self.board.undo_move()
         if self.testing:
@@ -212,18 +204,13 @@ class Negamax(Player):
             self.board.apply_move(move)
             self.states_visited += 1
             # get the value of this move
-            if self.ab_pruning:
-                # maybe_value catches none values for early return from timeouts
-                maybe_value = self.negamax(depth + 1, -beta, -alpha)
-                if maybe_value is not None:
-                    val = - maybe_value
-                else:
-                    self.board.undo_move()
-                    if self.testing:
-                        self.check_undo(old_state, old_pieces)
-                    return None
-            else:
-                val = -self.negamax(depth + 1)
+            val = self.get_board_value(depth, alpha, beta)
+            if val is None:
+                self.board.undo_move()
+                if self.testing:
+                    self.check_undo(old_state, old_pieces, old_zob_hash)
+                return None
+            self.update_t_table(depth)
             # remember the best value
             if val > max_val:
                 max_val = val
@@ -232,6 +219,71 @@ class Negamax(Player):
             if self.testing:
                 self.check_undo(old_state, old_pieces, old_zob_hash)
         return max_val
+
+    def get_board_value(self, depth, alpha, beta):
+        # get the value of this move
+        val = None
+        # check t_table
+        if self.t_table:
+            val = self.get_t_table_val()
+            if val:
+                self.t_table_hits += 1
+        if val is None:
+            # explore negamax tree
+            if self.ab_pruning:
+                val = self.explore_negamax(depth + 1, -beta, -alpha)
+            else:
+                val = self.explore_negamax(depth + 1)
+        return val
+
+    def explore_negamax(self, depth, alpha=None, beta=None):
+        if self.ab_pruning:
+            # this is the widest window possible for alpha beta
+            # maybe_value catches None values for early return from timeouts
+            val = self.negamax(depth, alpha, beta)
+            if val is not None:
+                val = -val
+        else:
+            val = - self.negamax(depth)
+        return val
+
+    def update_best_moves(self, move, best_moves, val):
+        # if this is a better move, remember it
+        if val > self.max_val:
+            self.max_val = val
+            best_moves = [move]
+            if self.testing:
+                self.vals = [val]
+        # if more than one move is best, keep them all
+        elif val == self.max_val:
+            best_moves.append(move)
+            if self.testing:
+                self.vals.append(val)
+        return best_moves
+
+    def update_t_table(self, depth, alpha=None, beta=None):
+        if self.t_table is None:
+            return
+        value = self.board.value
+        if not self.is_white:
+            value = -value
+        zob_hash = self.board.zob_hash
+        if self.ab_pruning:
+            entry = TTableEntry(value, depth, zob_hash, True, alpha, beta)
+        else:
+            entry = TTableEntry(value, depth, zob_hash, alpha, beta)
+        self.t_table.try_to_add(entry)
+
+    def get_t_table_val(self):
+        assert self.t_table
+        val = None
+        entry = self.t_table.get_entry(self.board.zob_hash)
+        if entry:
+            self.t_table_hits += 1
+            val = entry.value
+            if not self.is_white:
+                val = -val
+        return val
 
     def get_state(self):
         state = self.board.get_char_state_val()
@@ -259,7 +311,7 @@ class Negamax(Player):
 
 
 class IterativeDeepening(Player):
-    def __init__(self, board, is_white, time_limit, testing=False):
+    def __init__(self, board, is_white, time_limit, use_t_table, testing=False):
         Player.__init__(self, board, is_white, testing)
         self.time_limit = time_limit
         self.time_elapsed = None
