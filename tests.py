@@ -383,6 +383,29 @@ class StartingBoard(unittest.TestCase):
         Move(white_piece_list[6], Square((3, 2), "."))
     ]
 
+    white_left_pawn = [
+        Move(Square((4, 0), "P"), Square((3, 0), ".")),
+        Move(Square((3, 0), "P"), Square((2, 1), "p")),
+    ]
+
+    white_right_pawn = [
+        Move(Square((4, 4), "P"), Square((3, 4), ".")),
+        Move(Square((3, 4), "P"), Square((2, 3), "p")),
+    ]
+
+    black_left_pawn = [
+        Move(Square((1, 1), "p"), Square((2, 1), ".")),
+    ]
+
+    black_right_pawn = [
+        Move(Square((1, 3), "p"), Square((2, 3), ".")),
+    ]
+
+    black_knight = [
+        Move(Square((0, 3), "n"), Square((2, 2), ".")),
+        Move(Square((2, 2), "n"), Square((0, 3), ".")),
+    ]
+
     def test_moves(self):
         test_moves(self.init, self.moves)
 
@@ -392,6 +415,30 @@ class StartingBoard(unittest.TestCase):
         black = Player.Negamax(board, False, 2, ab_pruning=True, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
+
+    def test_zob_hash(self):
+        board1 = State.Board(self.init)
+        board1.apply_move(self.white_left_pawn[0])
+        board1.apply_move(self.black_left_pawn[0])
+        board1.apply_move(self.white_left_pawn[1])
+        board1.apply_move(self.black_knight[0])
+        board1.apply_move(self.white_right_pawn[0])
+        board1.apply_move(self.black_right_pawn[0])
+        board1.apply_move(self.white_right_pawn[1])
+        board1.apply_move(self.black_knight[1])
+        zob_hash1 = board1.zob_hash
+        board2 = State.Board(self.init)
+        board2.apply_move(self.white_left_pawn[0])
+        board2.apply_move(self.black_knight[0])
+        board2.apply_move(self.white_right_pawn[0])
+        board2.apply_move(self.black_left_pawn[0])
+        board2.apply_move(self.white_left_pawn[1])
+        board2.apply_move(self.black_right_pawn[0])
+        board2.apply_move(self.white_right_pawn[1])
+        board2.apply_move(self.black_knight[1])
+        zob_hash2 = board2.zob_hash
+        assert zob_hash1 == zob_hash2
+
 
 
 class Ordering(unittest.TestCase):
@@ -434,12 +481,12 @@ class Ordering(unittest.TestCase):
 
 class PawnEval(unittest.TestCase):
     doubled_init = ["0 W",
-                   ".....",
-                   ".....",
-                   "P....",
-                   "P....",
-                   ".....",
-                   "....."]
+                    ".....",
+                    ".....",
+                    "P....",
+                    "P....",
+                    ".....",
+                    "....."]
     doubled_board = State.Board(doubled_init)
     expected_doubled_value = 2 * doubled_board.doubled_pawn_value
 

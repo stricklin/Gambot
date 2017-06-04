@@ -3,6 +3,7 @@ import Player
 import argparse
 import time
 # TODO: Transposition table
+# TODO: add nodes explored and ttable hits to output
 # TODO: pondering
 # TODO: opening book
 

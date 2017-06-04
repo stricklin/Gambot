@@ -24,6 +24,44 @@ class Player:
             random.shuffle(best_moves)
         return best_moves[0]
 
+    @staticmethod
+    def move_to_char_move(move):
+        move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
+                           (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
+                           (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
+                           (2, 0): "a4", (2, 1): "b4", (2, 2): "c4", (2, 3): "d4", (2, 4): "e4",
+                           (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
+                           (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
+                           }
+        return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
+
+    def char_move_to_move(self, char_move):
+        move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1": (5, 4),
+                           "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2": (4, 4),
+                           "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3": (3, 4),
+                           "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4": (2, 4),
+                           "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5": (1, 4),
+                           "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6": (0, 4),
+                           }
+        # if no move was passed, return nothing
+        if "-" not in char_move:
+            return None
+        char_move = char_move[2:]
+        char_move = char_move.split("-")
+        src_cords = move_translator[char_move[0]]
+        dest_cords = move_translator[char_move[1]]
+        src = self.board.dict_board[src_cords]
+        dest = self.board.dict_board[dest_cords]
+        move = Move(src, dest)
+        return move
+
+    @staticmethod
+    def get_char_moves(moves):
+        char_moves = []
+        for move in moves:
+            char_moves.append(Net.move_to_char_move(move))
+        return char_moves
+
 
 class Human(Player):
     def __init__(self, board, is_white, testing=False):
@@ -35,7 +73,7 @@ class Human(Player):
         move_count = len(moves)
         selected_move = ""
         for i in range(move_count):
-            print str(i) + ". " + MoveGenerator.move_to_char_move(moves[i]) + " " + str(moves[i])
+            print str(i) + ". " + self.move_to_char_move(moves[i]) + " " + str(moves[i])
         while not selected_move.isdigit() or int(selected_move) >= move_count:
             selected_move = input("Choose which numbered move you would like to take: ")
         return [moves[int(selected_move)]]
@@ -82,7 +120,7 @@ class Negamax(Player):
                 return None
             # save old state for checking undo
             if self.testing:
-                old_state, old_pieces = self.get_state()
+                old_state, old_pieces, old_zob_hash = self.get_state()
             # apply move
             self.board.apply_move(move)
             # get the value of this move
@@ -111,7 +149,7 @@ class Negamax(Player):
             # undo move
             self.board.undo_move()
             if self.testing:
-                self.check_undo(old_state, old_pieces)
+                self.check_undo(old_state, old_pieces, old_zob_hash)
 
         if self.testing and self.ab_pruning and not self.time_limit:
             # this checks that the same moves are being produced
@@ -132,7 +170,7 @@ class Negamax(Player):
         moves = MoveGenerator(self.board).moves
         if self.testing:
             # grab the before state to test undo
-            old_state, old_pieces = self.get_state()
+            old_state, old_pieces, old_zob_hash = self.get_state()
         self.board.apply_move(moves[0])
         # get value of the first one to initalize max_val
         if self.ab_pruning:
@@ -148,8 +186,8 @@ class Negamax(Player):
         # undo move
         self.board.undo_move()
         if self.testing:
-            self.check_undo(old_state, old_pieces)
-        #TODO: comment here to explain how this pruning works
+            self.check_undo(old_state, old_pieces, old_zob_hash)
+        # TODO: comment here to explain how this pruning works
         if self.ab_pruning:
             if max_val > beta:
                 return max_val
@@ -162,7 +200,7 @@ class Negamax(Player):
                 return None
             if self.testing:
                 # grab the old state to check undo
-                old_state, old_pieces = self.get_state()
+                old_state, old_pieces, old_zob_hash = self.get_state()
             # apply move
             self.board.apply_move(move)
             # get the value of this move
@@ -184,26 +222,24 @@ class Negamax(Player):
             # undo move
             self.board.undo_move()
             if self.testing:
-                self.check_undo(old_state, old_pieces)
+                self.check_undo(old_state, old_pieces, old_zob_hash)
         return max_val
 
     def get_state(self):
-        old_state = self.board.get_char_state_val()
+        state = self.board.get_char_state_val()
+        zob_hash = self.board.zob_hash
         if self.is_white:
-            old_pieces = self.board.white_piece_list.get_pieces()
+            pieces = self.board.white_piece_list.get_pieces()
         else:
-            old_pieces = self.board.white_piece_list.get_pieces()
-        return old_state, old_pieces
+            pieces = self.board.white_piece_list.get_pieces()
+        return state, pieces, zob_hash
 
-    def check_undo(self, old_state, old_pieces):
+    def check_undo(self, old_state, old_pieces, old_zob_hash):
         # compare the old state with the undone state
-        undone_state, undone_pieces = self.get_state()
-        for index in range(len(undone_pieces)):
-            old = sorted(old_pieces)[index]
-            undone = sorted(undone_pieces)[index]
-            assert old == undone
-        assert set(old_pieces) == set(undone_pieces)
+        undone_state, undone_pieces, undone_zob_hash = self.get_state()
         assert set(old_state) == set(undone_state)
+        assert set(old_pieces) == set(undone_pieces)
+        assert old_zob_hash == undone_zob_hash
 
     def out_of_time(self):
         # check if iteritive deepening
@@ -286,43 +322,6 @@ class Net(Player):
             # todo: verify state and update time
         return [self.char_move_to_move(move)]
 
-    @staticmethod
-    def move_to_char_move(move):
-        move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
-                           (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
-                           (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
-                           (2, 0): "a4", (2, 1): "b4", (2, 2): "c4", (2, 3): "d4", (2, 4): "e4",
-                           (1, 0): "a5", (1, 1): "b5", (1, 2): "c5", (1, 3): "d5", (1, 4): "e5",
-                           (0, 0): "a6", (0, 1): "b6", (0, 2): "c6", (0, 3): "d6", (0, 4): "e6",
-                           }
-        return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
-
-    def char_move_to_move(self, char_move):
-        move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1": (5, 4),
-                           "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2": (4, 4),
-                           "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3": (3, 4),
-                           "a4": (2, 0), "b4": (2, 1), "c4": (2, 2), "d4": (2, 3),  "e4": (2, 4),
-                           "a5": (1, 0), "b5": (1, 1), "c5": (1, 2), "d5": (1, 3),  "e5": (1, 4),
-                           "a6": (0, 0), "b6": (0, 1), "c6": (0, 2), "d6": (0, 3),  "e6": (0, 4),
-                           }
-        # if no move was passed, return nothing
-        if "-" not in char_move:
-            return None
-        char_move = char_move[2:]
-        char_move = char_move.split("-")
-        src_cords = move_translator[char_move[0]]
-        dest_cords = move_translator[char_move[1]]
-        src = self.board.dict_board[src_cords]
-        dest = self.board.dict_board[dest_cords]
-        move = Move(src, dest)
-        return move
-
-    @staticmethod
-    def get_char_moves(moves):
-        char_moves = []
-        for move in moves:
-            char_moves.append(Net.move_to_char_move(move))
-        return char_moves
 
 
 

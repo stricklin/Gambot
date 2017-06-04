@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 from Square import Square
 from MoveGenerator import MoveGenerator
 from Undo import Undo
@@ -15,8 +16,7 @@ def read_stdin():
 
 class Board:
 
-    def __init__(self, game_state, pawn_evaluation=False):
-        self.pawn_evaluation = pawn_evaluation
+    def __init__(self, game_state, pawn_evaluation=False, zobrist_file="zobrist_key.npy"):
         # Separate the turn info from the state and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
@@ -27,25 +27,27 @@ class Board:
         init_board = [list(x) for x in init_board]
 
         # Set up invarients
+        self.pawn_evaluation = pawn_evaluation
         self.row_count = 6
         self.col_count = 5
-        self.col_letters = ['a', 'b', 'c', 'd', 'e']
-        self.num_to_char_piece = {0: ".",
-                                  1: "P", -1: "p",
-                                  2: "N", -2: "n",
-                                  3: "B", -3: "b",
-                                  4: "R", -4: "r",
-                                  5: "Q", -5: "q",
-                                  6: "K", -6: "k",
-                                  }
-        self.char_to_num_piece = {".": 0,
-                                  "P": 1, "p": -1,
-                                  "N": 2, "n": -2,
-                                  "B": 3, "b": -3,
-                                  "R": 4, "r": -4,
-                                  "Q": 5, "q": -5,
-                                  "K": 6, "k": -6,
-                                  }
+        # first dimension is rows, second is columns, third is piece type
+        self.zobrist_key = np.load(zobrist_file)
+        self.num_to_piece = {0: ".",
+                             1: "P", 7: "p",
+                             2: "N", 8: "n",
+                             3: "B", 9: "b",
+                             4: "R", 10: "r",
+                             5: "Q", 11: "q",
+                             6: "K", 12: "k",
+                             }
+        self.piece_to_num = {".": 0,
+                             "P": 1, "p": 7,
+                             "N": 2, "n": 8,
+                             "B": 3, "b": 9,
+                             "R": 4, "r": 10,
+                             "Q": 5, "q": 11,
+                             "K": 6, "k": 12,
+                             }
         self.piece_value = {"P": 100,
                             "N": 75,
                             "B": 300,
@@ -56,10 +58,11 @@ class Board:
         self.gaurded_pawn_value = 1.5 * self.piece_value["P"]
         self.doubled_pawn_value = -.5 * self.piece_value["P"]
 
-        # Set up piece lists and dict_board
+        # Set up piece lists, dict_board, and zob_hash
         self.white_piece_list = PieceList()
         self.black_piece_list = PieceList()
         self.dict_board = {}
+        self.zob_hash = 0
         self.read_init_board(init_board)
 
         # Set up undo stack
@@ -170,12 +173,14 @@ class Board:
 
     def add_square(self, square):
         """
-        adds a square to the dict_board and if the square is not empty,
-        adds that square to it's piece list
+        adds a square to the dict_board and updates zob_hash
+        if the square is non-empty, that square is added to it's piece list
         :param square: the square to add
         :return: 
         """
+        # add square to board and update zob_hash
         self.dict_board[square.cords] = square
+        self.update_zob_hash(square)
         # if square is not empty put piece into piece list
         if square.is_empty():
             return
@@ -186,11 +191,13 @@ class Board:
 
     def remove_square(self, square):
         """
-        if the square is not empty, it is removed from the dict_board
-        and it's piece list
+        updates zob_hash and the square is non-empty, 
+        it is removed from the dict_board and it's piece list
         :param square: the square to remove
         :return: the piece inside the square
         """
+        # update zob_hash
+        self.update_zob_hash(square)
         # if there is a piece, see which side it belongs to
         if not square.is_empty():
             # TODO: This could be more DRY
@@ -202,6 +209,11 @@ class Board:
             replacement_square = Square(square.cords, ".")
             self.dict_board[square.cords] = replacement_square
         return square.piece
+
+    def update_zob_hash(self, square):
+        # xors zob_hash with hash value of square
+        square_hash = self.zobrist_key[square.row, square.col, self.piece_to_num[square.piece]]
+        self.zob_hash = self.zob_hash ^ square_hash
 
     def print_char_state(self):
         """prints the state of the state to stdout"""
