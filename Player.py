@@ -330,9 +330,6 @@ class IterativeDeepening(Player):
             self.t_table = None
         self.states_visited = 0
         self.t_table_hits = 0
-        self.player = Negamax(board=self.board, is_white=self.is_white, max_depth=0, ab_pruning=self.ab_pruning,
-                              time_limit=self.time_limit, use_t_table=self.use_t_table, t_table=self.t_table,
-                              testing=self.testing)
 
     def get_moves(self):
         depth = 0
@@ -344,10 +341,10 @@ class IterativeDeepening(Player):
             old_moves = new_moves
             self.time_elapsed = time.time() - self.start_time
             time_left = self.time_limit - self.time_elapsed
-            self.player.board = self.board
-            self.player.time_limit = time_left
-            self.player.max_depth = depth
-            new_moves = self.player.get_moves()
+            player = Negamax(board=self.board, is_white=self.is_white, max_depth=depth, ab_pruning=self.ab_pruning,
+                             time_limit=self.time_limit, use_t_table=self.use_t_table,
+                             testing=self.testing)
+            new_moves = player.get_moves()
         print "depth reached: " + str(depth)
         return old_moves
 
