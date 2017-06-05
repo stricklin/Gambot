@@ -446,7 +446,7 @@ class IterativeDeepening(Player):
                              time_limit=time_left, use_t_table=self.use_t_table,
                              testing=self.testing)
             new_moves = player.get_moves()
-        print "depth reached: " + str(depth)
+        print "depth reached: " + str(depth -1)
         return old_moves
 
     def out_of_time(self, time_limit):
