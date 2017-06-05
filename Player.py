@@ -398,6 +398,8 @@ class Negamax(Player):
         """
         # check if iteritive deepening
         if self.time_limit:
+            if self.time_limit < 0:
+                return True
             time_elapsed = time.time() - self.start_time
             if time_elapsed > self.time_limit:
                 return True
@@ -408,9 +410,10 @@ class IterativeDeepening(Player):
     """
     a player that uses iterative deepening negamax to choose moves
     """
-    def __init__(self, board, is_white, time_limit, ab_pruning, t_table, testing=False):
+    def __init__(self, board, is_white, early_time_limit, late_time_limit, ab_pruning, t_table, testing=False):
         Player.__init__(self, board, is_white, testing)
-        self.time_limit = time_limit
+        self.early_time_limit = early_time_limit
+        self.late_time_limit = late_time_limit
         self.time_elapsed = None
         self.start_time = None
         self.ab_pruning = ab_pruning
@@ -427,12 +430,16 @@ class IterativeDeepening(Player):
         old_moves = []
         new_moves = []
         self.start_time = time.time()
-        while not self.out_of_time():
+        if self.board.turn_count > 10:
+            time_limit = self.late_time_limit
+        else:
+            time_limit = self.early_time_limit
+        while not self.out_of_time(time_limit):
             depth += 1
             # this keeps partially completed searches from being used
             old_moves = new_moves
             self.time_elapsed = time.time() - self.start_time
-            time_left = self.time_limit - self.time_elapsed
+            time_left = time_limit - self.time_elapsed
             # TODO: right now the old t_table is thrown away each time because otherwise it doesnt keep going deeper
             # it would be better if it wasnt like that
             player = Negamax(board=self.board, is_white=self.is_white, max_depth=depth, ab_pruning=self.ab_pruning,
@@ -442,13 +449,13 @@ class IterativeDeepening(Player):
         print "depth reached: " + str(depth)
         return old_moves
 
-    def out_of_time(self):
+    def out_of_time(self, time_limit):
         """
         checks if out of time
         :return: True if out of time, False otherwise
         """
         self.time_elapsed = time.time() - self.start_time
-        if self.time_elapsed > self.time_limit:
+        if self.time_elapsed > time_limit:
             return True
         return False
 

@@ -101,9 +101,11 @@ def make_player(arguments, board, is_white, testing):
             player = player_type_lookup[player_type](board=board, is_white=is_white, max_depth=depth,
                                                      ab_pruning=ab_pruning, use_t_table=use_t_table, testing=testing)
         elif player_type == "id":
-            time_limit = int(get_arg_value(arguments, "tl"))
+            early_time_limit = int(get_arg_value(arguments, "etl"))
+            late_time_limit = int(get_arg_value(arguments, "ltl"))
             player = player_type_lookup[player_type](board=board, is_white=is_white, ab_pruning=ab_pruning,
-                                                     time_limit=time_limit, t_table=use_t_table, testing=testing)
+                                                     early_time_limit=early_time_limit, late_time_limit=late_time_limit,
+                                                     t_table=use_t_table, testing=testing)
     elif player_type in ["net"]:
             net_player = True
             username = get_arg_value(arguments, "u")
