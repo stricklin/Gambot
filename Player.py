@@ -219,6 +219,9 @@ class Negamax(Player):
         if depth >= self.max_depth or self.board.winner:
             return self.board.value
         moves = MoveGenerator(self.board).moves
+        if not moves:
+            self.board.lose()
+            return None
         if self.testing:
             # grab the before state to test undo
             old_state, old_pieces, old_zob_hash = self.get_state()
