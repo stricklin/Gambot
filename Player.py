@@ -454,12 +454,12 @@ class Net(Player):
     """
     a player that gets it's moves from the chess server
     """
-    def __init__(self, board, is_white, username, password, game_type, game_number=None):
+    def __init__(self, board, is_white, username, password, game_type, game_id=None):
         Player.__init__(self, board, is_white)
         self.username = username
         self.password = password
         self.game_type = game_type
-        self.game_number = game_number
+        self.game_id = game_id
         self.client = Client()
 
         # try to login or register
@@ -479,8 +479,8 @@ class Net(Player):
         :return: the game id of game accepted
         """
         # if game id specified, accept that game
-        if self.game_number:
-            return self.client.accept(self.game_number)
+        if self.game_id:
+            return self.client.accept(self.game_id)
         # read the games
         games = self.client.get_games()
         game_number = -1
