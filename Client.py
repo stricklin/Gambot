@@ -104,8 +104,8 @@ class Client:
         if not reply.startswith("202"):
             exit("problems registering " + self.username + " with password " + self.password)
 
-    def offer(self):
-        self.write("offer")
+    def offer(self, color):
+        self.write("offer " + color)
         self.start(True)
         return self.is_white
 

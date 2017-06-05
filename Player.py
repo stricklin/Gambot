@@ -472,7 +472,11 @@ class Net(Player):
 
         # the returns are negated because net players are the opposite color serverside
         if "offer" in game_type:
-            self.is_white = not self.client.offer()
+            if self.is_white:
+                self.is_white = not self.client.offer("w")
+            else:
+                self.is_white = not self.client.offer("b")
+
         else:
             self.is_white = not self.accept()
 
