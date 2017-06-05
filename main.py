@@ -193,7 +193,7 @@ if __name__ == "__main__":
                              ".....",
                              "PPPPP",
                              "RNBQK"], args.pawn_evaluation)
-    if "net" in args.white or "net" in args.black:
+    if "pt:net" in args.white or "pt:net" in args.black:
         if "net" in args.white and "net" in args.black:
             exit("unable to have 2 net players")
         offerer, net_display1 = make_player(args.white, state, True, args.testing)
