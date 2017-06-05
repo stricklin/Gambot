@@ -1,4 +1,7 @@
 class Move:
+    """
+    a representation of a move for minichess
+    """
     def __init__(self, src, dest):
         self.src = src
         self.dest = dest

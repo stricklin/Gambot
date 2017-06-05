@@ -2,7 +2,7 @@ import State
 import Player
 import argparse
 import time
-# TODO: Transposition table
+# TODO: ab Transposition table
 # TODO: pondering
 # TODO: opening book
 
@@ -33,7 +33,6 @@ class Game:
             move = player.get_move()
             # show the board state and the move about to be applied
             self.print_board_and_move(move)
-            # TODO: this doesnt seem right, I bet I could get rid of checking if moves exist
             # move might be None if game is over
             if move:
                 self.board.apply_move(move)

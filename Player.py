@@ -1,7 +1,6 @@
 from Client import Client
 from MoveGenerator import MoveGenerator
 from Move import Move
-from Square import Square
 from TTable import TTable
 from TTableEntry import TTableEntry
 import random
@@ -9,6 +8,9 @@ import time
 
 
 class Player:
+    """
+    a base class for other player types
+    """
     def __init__(self, board, is_white, testing=False):
         self.board = board
         self.is_white = is_white
@@ -23,11 +25,17 @@ class Player:
         if not best_moves:
             return None
         if not self.testing:
+            # it's helpful for games to be deterministic when debugging
             random.shuffle(best_moves)
         return best_moves[0]
 
     @staticmethod
     def move_to_char_move(move):
+        """
+        turns a move into a char string for talking to the server
+        :param move: the move to translate
+        :return: the translated move
+        """
         move_translator = {(5, 0): "a1", (5, 1): "b1", (5, 2): "c1", (5, 3): "d1", (5, 4): "e1",
                            (4, 0): "a2", (4, 1): "b2", (4, 2): "c2", (4, 3): "d2", (4, 4): "e2",
                            (3, 0): "a3", (3, 1): "b3", (3, 2): "c3", (3, 3): "d3", (3, 4): "e3",
@@ -38,6 +46,11 @@ class Player:
         return move_translator[move.src.cords] + "-" + move_translator[move.dest.cords]
 
     def char_move_to_move(self, char_move):
+        """
+        turns a char string into a move
+        :param char_move: the char string to translate
+        :return: the translated move
+        """
         move_translator = {"a1": (5, 0), "b1": (5, 1), "c1": (5, 2), "d1": (5, 3),  "e1": (5, 4),
                            "a2": (4, 0), "b2": (4, 1), "c2": (4, 2), "d2": (4, 3),  "e2": (4, 4),
                            "a3": (3, 0), "b3": (3, 1), "c3": (3, 2), "d3": (3, 3),  "e3": (3, 4),
@@ -59,6 +72,12 @@ class Player:
 
     @staticmethod
     def get_char_moves(moves):
+        """
+        turns a list of moves into char moves
+        used for testing against move generator
+        :param moves: the moves to translate
+        :return: the translated moves
+        """
         char_moves = []
         for move in moves:
             char_moves.append(Net.move_to_char_move(move))
@@ -66,10 +85,17 @@ class Player:
 
 
 class Human(Player):
+    """
+    a player that lets a human play the game
+    """
     def __init__(self, board, is_white, testing=False):
         Player.__init__(self, board, is_white, testing)
 
     def get_moves(self):
+        """
+        generates all moves then allows human to choose one
+        :return: the chosen move
+        """
         # get all the moves
         moves = MoveGenerator(self.board).moves
         move_count = len(moves)
@@ -82,10 +108,17 @@ class Human(Player):
 
 
 class Random(Player):
+    """
+    a player that makes random moves
+    """
     def __init__(self, board, is_white, testing=False):
         Player.__init__(self, board, is_white, testing)
 
     def get_moves(self):
+        """
+        generates all moves and selects a random one
+        :return: the random move chosen
+        """
         assert self.is_white == self.board.whites_turn
         moves = MoveGenerator(self.board).moves
         # the 0 and [0] are to comply with gemoves in other player classes
@@ -93,11 +126,15 @@ class Random(Player):
 
 
 class Negamax(Player):
+    """
+    a player that uses negamax to choose moves
+    """
     def __init__(self, board, is_white, max_depth, ab_pruning=False, use_t_table=False, t_table=None, time_limit=None,
                  testing=False, print_visited=True):
         Player.__init__(self, board, is_white, testing)
         self.max_depth = max_depth
         self.ab_pruning = ab_pruning
+        # initalize t_table
         if use_t_table:
             if t_table is None:
                 self.t_table = TTable()
@@ -111,10 +148,12 @@ class Negamax(Player):
         self.start_time = None
         self.states_visited = 0
         self.t_table_hits = 0
-        # vals is for testing
-        self.vals = []
 
     def get_moves(self):
+        """
+        explores negamax tree to select moves
+        :return: returns the moves with the highest value
+        """
         assert self.is_white == self.board.whites_turn
         self.states_visited = 0
         self.t_table_hits = 0
@@ -161,11 +200,17 @@ class Negamax(Player):
             unpruned_moves = nega_player.get_moves()
             assert set(best_moves) == set(unpruned_moves)
         if self.print_node_hit_info:
-            print str(self.states_visited) + " states visited"
-            print str(self.t_table_hits) + " TTable hits"
+            print str(self.states_visited) + " states visited | " + str(self.t_table_hits) + " TTable hits"
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
+        """
+        the recursive function that explores the negamax tree to get move values
+        :param depth: the depth to explore to
+        :param alpha: the best value for player on move along path to root
+        :param beta: the best value for other player along path to root
+        :return: the value of the move, or None if ran out of time
+        """
         original_alpha = alpha
         # return nothing if out of time
         if self.out_of_time():
@@ -191,7 +236,6 @@ class Negamax(Player):
         self.board.undo_move()
         if self.testing:
             self.check_undo(old_state, old_pieces, old_zob_hash)
-        # TODO: comment here to explain how this pruning works
         if self.ab_pruning:
             if max_val > beta:
                 return max_val
@@ -226,6 +270,13 @@ class Negamax(Player):
         return max_val
 
     def get_board_value(self, depth, alpha, beta):
+        """
+        a wrapper function that checks the t_table and does the right kind of negamax
+        :param depth: the depth to search to
+        :param alpha: the best value for player on move along path to root
+        :param beta: the best value for other player along path to root
+        :return: the value of the move, or None if ran out of time
+        """
         # initalize flags
         val = None
         more_search_required = True
@@ -252,6 +303,13 @@ class Negamax(Player):
         return val, alpha, beta
 
     def get_negamax_value(self, depth, alpha=None, beta=None):
+        """
+        a wrapper that handles returning vals being None
+        :param depth: the depth to search to
+        :param alpha: the best value for player on move along path to root
+        :param beta: the best value for other player along path to root
+        :return: the value of the move, or None if ran out of time
+        """
         if self.ab_pruning:
             val = self.negamax(depth + 1, -beta, -alpha)
         else:
@@ -261,23 +319,36 @@ class Negamax(Player):
         return val
 
     def update_best_moves(self, move, best_moves, val):
+        """
+        updates the list of best moves
+        :param move: the current move 
+        :param best_moves: the list of best moves so far
+        :param val: the val of current move
+        :return: the new list of best moves
+        """
         # if this is a better move, remember it
         if val > self.max_val:
             self.max_val = val
             best_moves = [move]
-            if self.testing:
-                self.vals = [val]
         # if more than one move is best, keep them all
         elif val == self.max_val:
             best_moves.append(move)
-            if self.testing:
-                self.vals.append(val)
         return best_moves
 
     def update_t_table(self, depth, value, alpha=None, beta=None):
+        """
+        attempts to put a TTEntry into the table
+        :param depth: the current depth
+        :param value: the value of the state
+        :param alpha: the best value for player on move along path to root
+        :param beta: the best value for other player along path to root
+        :return: None
+        """
+        # return early if not using t_table
         if self.t_table is None:
             return
         zob_hash = self.board.zob_hash
+        # get ab bound
         if self.ab_pruning:
             if value <= alpha:
                 bound = "upper"
@@ -291,6 +362,10 @@ class Negamax(Player):
         self.t_table.try_to_add(entry)
 
     def get_state(self):
+        """
+        used for getting before state to test undo
+        :return: the char state, piece list, and zob_hash of current board
+        """
         state = self.board.get_char_state_val()
         zob_hash = self.board.zob_hash
         if self.is_white:
@@ -300,6 +375,13 @@ class Negamax(Player):
         return state, pieces, zob_hash
 
     def check_undo(self, old_state, old_pieces, old_zob_hash):
+        """
+        checks the old state values vs the undone state values
+        :param old_state: the old char state
+        :param old_pieces: the old piece list
+        :param old_zob_hash: the old zob_hash
+        :return: 
+        """
         # compare the old state with the undone state
         undone_state, undone_pieces, undone_zob_hash = self.get_state()
         assert set(old_state) == set(undone_state)
@@ -307,6 +389,10 @@ class Negamax(Player):
         assert old_zob_hash == undone_zob_hash
 
     def out_of_time(self):
+        """
+        checks if out of time
+        :return: True if out of time, False otherwise
+        """
         # check if iteritive deepening
         if self.time_limit:
             time_elapsed = time.time() - self.start_time
@@ -316,39 +402,48 @@ class Negamax(Player):
 
 
 class IterativeDeepening(Player):
+    """
+    a player that uses iterative deepening negamax to choose moves
+    """
     def __init__(self, board, is_white, time_limit, ab_pruning, t_table, testing=False):
         Player.__init__(self, board, is_white, testing)
         self.time_limit = time_limit
         self.time_elapsed = None
         self.start_time = None
         self.ab_pruning = ab_pruning
-        if t_table:
-            self.use_t_table = True
-            self.t_table = TTable()
-        else:
-            self.use_t_table = False
-            self.t_table = None
+        self.use_t_table = t_table
         self.states_visited = 0
         self.t_table_hits = 0
 
     def get_moves(self):
+        """
+        gets moves from multiple negamax searches
+        :return: the best moves from the deepest completed negamax search
+        """
         depth = 0
         old_moves = []
         new_moves = []
         self.start_time = time.time()
         while not self.out_of_time():
             depth += 1
+            # this keeps partially completed searches from being used
             old_moves = new_moves
             self.time_elapsed = time.time() - self.start_time
             time_left = self.time_limit - self.time_elapsed
+            # TODO: right now the old t_table is thrown away each time because otherwise it doesnt keep going deeper
+            # it would be better if it wasnt like that
             player = Negamax(board=self.board, is_white=self.is_white, max_depth=depth, ab_pruning=self.ab_pruning,
-                             time_limit=self.time_limit, use_t_table=self.use_t_table,
+                             time_limit=time_left, use_t_table=self.use_t_table,
                              testing=self.testing)
             new_moves = player.get_moves()
         print "depth reached: " + str(depth)
         return old_moves
 
     def out_of_time(self):
+        """
+        checks if out of time
+        :return: True if out of time, False otherwise
+        """
         self.time_elapsed = time.time() - self.start_time
         if self.time_elapsed > self.time_limit:
             return True
@@ -356,6 +451,9 @@ class IterativeDeepening(Player):
 
 
 class Net(Player):
+    """
+    a player that gets it's moves from the chess server
+    """
     def __init__(self, board, is_white, username, password, game_type, game_number=None):
         Player.__init__(self, board, is_white)
         self.username = username
@@ -364,6 +462,7 @@ class Net(Player):
         self.game_number = game_number
         self.client = Client()
 
+        # try to login or register
         if not self.client.login(self.username, self.password):
             if not self.client.register(self.username, self.password):
                 exit("unable to login or register")
@@ -375,9 +474,14 @@ class Net(Player):
             self.is_white = not self.accept()
 
     def accept(self):
-        # read the games
+        """
+        accepts a game
+        :return: the game id of game accepted
+        """
+        # if game id specified, accept that game
         if self.game_number:
             return self.client.accept(self.game_number)
+        # read the games
         games = self.client.get_games()
         game_number = -1
         for game in games:
@@ -387,6 +491,10 @@ class Net(Player):
         return self.client.accept(game_number)
 
     def get_moves(self):
+        """
+        sends the last move made and recives the next move
+        :return: the move recieved from the server
+        """
         # this only happens when Net is black_player serverside
         move = self.client.get_first_move()
         if move is None:
@@ -395,9 +503,4 @@ class Net(Player):
                 self.client.write(self.move_to_char_move(self.board.last_move))
             # get the new move
             move, server_board, game_times = self.client.get_message()
-            # todo: verify state and update time
         return [self.char_move_to_move(move)]
-
-
-
-

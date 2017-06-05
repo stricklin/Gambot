@@ -6,24 +6,32 @@ from PieceList import PieceList
 
 
 def read_file(file):
+    """
+    reads a board from a file
+    :param file: the file to read
+    :return: the board as a list of strings
+    """
     return open(file).read().splitlines()
 
 
 def read_stdin():
+    """
+    reads a board from std_in
+    :return: the boad as a list of strings
+    """
     return sys.stdin.read().splitlines()
 
 
 class Board:
+    """
+    the state representation of a board in minichess
+    """
 
     def __init__(self, game_state, pawn_evaluation=False, testing=False):
-        # Separate the turn info from the state and store
+        # separate the turn info from the state and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
         self.whites_turn = players_turn == "W"
-
-        # Store a char representation of the state
-        init_board = game_state[1:]
-        init_board = [list(x) for x in init_board]
 
         # Set up invarients
         self.pawn_evaluation = pawn_evaluation
@@ -66,6 +74,8 @@ class Board:
         self.black_piece_list = PieceList()
         self.dict_board = {}
         self.zob_hash = 0
+        init_board = game_state[1:]
+        init_board = [list(x) for x in init_board]
         self.read_init_board(init_board)
 
         # Set up undo stack
@@ -80,7 +90,9 @@ class Board:
         self.value = self.get_value()
 
     def get_value(self):
-        """sums the values of the piece lists and gets the difference. side on move - other side"""
+        """
+        sums the values of the piece lists and gets the difference. side on move - other side
+        """
         # TODO: this seems like it could be done better
         if self.winner is None:
             white_value = 0
@@ -111,8 +123,8 @@ class Board:
 
     def read_init_board(self, init_board):
         """
-        Walks the init_board and adds each piece to the correct piece list
-        Also initalizes zob_hash
+        walks the init_board and adds each piece to the correct piece list
+        also initalizes zob_hash
         """
         for r in range(self.row_count):
             for c in range(self.col_count):
@@ -211,7 +223,6 @@ class Board:
         self.update_zob_hash_square(square)
         # if there is a piece, see which side it belongs to
         if not square.is_empty():
-            # TODO: This could be more DRY
             is_white = square.piece.isupper()
             if is_white:
                     self.white_piece_list.remove(square)
@@ -278,6 +289,11 @@ class Board:
         return state
 
     def win(self, winner):
+        """
+        wins the game for winner
+        :param winner: the player that won the game
+        :return: None
+        """
         self.winner = winner
         if self.winner == "white_player":
             if self.whites_turn:
@@ -291,6 +307,10 @@ class Board:
                 self.value = -10000
 
     def lose(self):
+        """
+        loses the game for the player on move
+        :return: None
+        """
         self.value = -10000
         if self.whites_turn:
             self.winner = "black_player"
@@ -298,6 +318,10 @@ class Board:
             self.winner = "white_player"
 
     def draw(self):
+        """
+        draws the game
+        :return: None
+        """
         self.value = 0
         self.winner = "draw"
 
@@ -352,7 +376,7 @@ class Board:
     def undo_move(self):
         """
         changes the games state to what it was before the move was applied
-        :return: 
+        :return: None
         """
         # get the old undo information
         undo = self.undos.pop()
@@ -371,3 +395,4 @@ class Board:
         self.add_square(undo.old_dest)
         self.update_zob_hash_player()
         self.test_zob_hash()
+

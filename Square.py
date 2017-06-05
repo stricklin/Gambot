@@ -1,4 +1,7 @@
 class Square:
+    """
+    a repesentation of a board square
+    """
     def __init__(self, cordinates, piece):
         self.cords = cordinates
         self.row = cordinates[0]
