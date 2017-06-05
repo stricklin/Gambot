@@ -1,4 +1,3 @@
-from TTableEntry import TTableEntry
 from collections import deque
 
 
@@ -11,13 +10,17 @@ class TTable:
         self.smallest_depth = 100
 
     def try_to_add(self, entry):
-        # if entry already present, don't add again
+        # if same entry with smaller depth is present, replace that entry
         if entry.zob_hash in self.entrys_by_zob_hash:
+            present_entry = self.entrys_by_zob_hash[entry.zob_hash]
+            if entry.depth > present_entry.depth:
+                self.remove(present_entry)
+                self.add(entry)
             return
         if self.current_size < self.max_size:
             self.add(entry)
         elif entry.depth >= self.smallest_depth:
-            self.remove_smallest()
+            self.remove_oldest_shallowest()
             self.add(entry)
 
     def add(self, entry):
@@ -30,18 +33,24 @@ class TTable:
             if entry.depth < self.smallest_depth:
                 self.smallest_depth = entry.depth
 
-    def remove_smallest(self):
-        # get the hash of the oldest smallest entry and remove hashes by depth
-        smallest_depth_queue = self.zob_hashes_by_depth[self.smallest_depth]
-        hash_to_remove = smallest_depth_queue.popleft()
-        # remove the oldest smallest entry
-        removed_entry = self.entrys_by_zob_hash.pop(hash_to_remove)
-        # update size
-        self.current_size -= 1
-        # update smallest depth if needed
-        if not self.zob_hashes_by_depth[self.smallest_depth]:
-            self.zob_hashes_by_depth.pop(self.smallest_depth)
+    def remove(self, entry):
+        # remove from hashes by depth
+        self.zob_hashes_by_depth[entry.depth].remove(entry.zob_hash)
+        # if it was the last entry of that depth, remove that depth
+        if not self.zob_hashes_by_depth[entry.depth]:
+            self.zob_hashes_by_depth.pop(entry.depth)
             self.smallest_depth = min(self.zob_hashes_by_depth.keys())
+        # remove from entries by hash
+        self.entrys_by_zob_hash.pop(entry.zob_hash)
+        self.current_size -= 1
+
+    def remove_oldest_shallowest(self):
+        # get the the oldest smallest entry
+        smallest_depth_queue = self.zob_hashes_by_depth[self.smallest_depth]
+        oldest_smallest_hash = smallest_depth_queue[0]
+        oldest_smallest = self.entrys_by_zob_hash[oldest_smallest_hash]
+        # remove the oldest smallest entry
+        self.remove(oldest_smallest)
 
     def get_entry(self, zob_hash):
         return self.entrys_by_zob_hash.get(zob_hash)

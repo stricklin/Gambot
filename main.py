@@ -3,7 +3,6 @@ import Player
 import argparse
 import time
 # TODO: Transposition table
-# TODO: add nodes explored and ttable hits to output
 # TODO: pondering
 # TODO: opening book
 
@@ -89,8 +88,7 @@ def make_player(arguments, board, is_white, testing):
                           }
     if player_type in ["h", "r"]:
         player = player_type_lookup[player_type](board, is_white, testing)
-    elif player_type in ["nega"]:
-        depth = int(get_arg_value(arguments, "d"))
+    elif player_type in ["nega", "id"]:
         if "ab" in arguments:
             ab_pruning = True
         else:
@@ -99,16 +97,14 @@ def make_player(arguments, board, is_white, testing):
             use_t_table = True
         else:
             use_t_table = False
-        player = player_type_lookup[player_type](board=board, is_white=is_white, max_depth=depth,
-                                                 ab_pruning=ab_pruning, use_t_table=use_t_table, testing=testing)
-    elif player_type in ["id"]:
-        if "tt" in arguments:
-            use_t_table = True
-        else:
-            use_t_table = False
+        if player_type == "nega":
+            depth = int(get_arg_value(arguments, "d"))
+            player = player_type_lookup[player_type](board=board, is_white=is_white, max_depth=depth,
+                                                     ab_pruning=ab_pruning, use_t_table=use_t_table, testing=testing)
+        elif player_type == "id":
             time_limit = int(get_arg_value(arguments, "tl"))
-            player = player_type_lookup[player_type](board=board, is_white=is_white,
-                                                     time_limit=time_limit, use_t_table=use_t_table, testing=testing)
+            player = player_type_lookup[player_type](board=board, is_white=is_white, ab_pruning=ab_pruning,
+                                                     time_limit=time_limit, t_table=use_t_table, testing=testing)
     elif player_type in ["net"]:
             net_player = True
             username = get_arg_value(arguments, "u")

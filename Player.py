@@ -93,13 +93,16 @@ class Random(Player):
 
 
 class Negamax(Player):
-    def __init__(self, board, is_white, max_depth, ab_pruning=False, use_t_table=False, time_limit=None,
+    def __init__(self, board, is_white, max_depth, ab_pruning=False, use_t_table=False, t_table=None, time_limit=None,
                  testing=False, print_visited=True):
         Player.__init__(self, board, is_white, testing)
         self.max_depth = max_depth
         self.ab_pruning = ab_pruning
         if use_t_table:
-            self.t_table = TTable()
+            if t_table is None:
+                self.t_table = TTable()
+            else:
+                self.t_table = t_table
         else:
             self.t_table = None
         self.print_node_hit_info = print_visited
@@ -111,14 +114,15 @@ class Negamax(Player):
         # vals is for testing
         self.vals = []
 
-
     def get_moves(self):
         assert self.is_white == self.board.whites_turn
+        self.states_visited = 0
+        self.t_table_hits = 0
         # start timer for iteritive deepening
         if self.time_limit:
             self.start_time = time.time()
         best_moves = []
-        # initialize max_val to something too low
+        # initialize max_val to lowest value
         self.max_val = -10000
         # generate and test each move
         moves = MoveGenerator(self.board).moves
@@ -142,7 +146,7 @@ class Negamax(Player):
                 if self.testing:
                     self.check_undo(old_state, old_pieces, old_zob_hash)
                 return None
-            self.update_t_table(0)
+            self.update_t_table(0, val, -10000, 10000)
             best_moves = self.update_best_moves(move, best_moves, val)
             # undo move
             self.board.undo_move()
@@ -162,6 +166,7 @@ class Negamax(Player):
         return best_moves
 
     def negamax(self, depth, alpha=None, beta=None):
+        original_alpha = alpha
         # return nothing if out of time
         if self.out_of_time():
             return None
@@ -175,13 +180,13 @@ class Negamax(Player):
         self.board.apply_move(moves[0])
         self.states_visited += 1
         # get value of the first one to initalize max_val
-        max_val = self.get_board_value(depth, alpha, beta)
+        max_val, alpha, beta = self.get_board_value(depth, alpha, beta)
         if max_val is None:
             self.board.undo_move()
             if self.testing:
                 self.check_undo(old_state, old_pieces, old_zob_hash)
             return None
-        self.update_t_table(depth)
+        self.update_t_table(depth, max_val, original_alpha, beta)
         # undo move
         self.board.undo_move()
         if self.testing:
@@ -204,13 +209,13 @@ class Negamax(Player):
             self.board.apply_move(move)
             self.states_visited += 1
             # get the value of this move
-            val = self.get_board_value(depth, alpha, beta)
+            val, alpha, beta = self.get_board_value(depth, alpha, beta)
             if val is None:
                 self.board.undo_move()
                 if self.testing:
                     self.check_undo(old_state, old_pieces, old_zob_hash)
                 return None
-            self.update_t_table(depth)
+            self.update_t_table(depth, val, original_alpha, beta)
             # remember the best value
             if val > max_val:
                 max_val = val
@@ -221,30 +226,38 @@ class Negamax(Player):
         return max_val
 
     def get_board_value(self, depth, alpha, beta):
-        # get the value of this move
+        # initalize flags
         val = None
+        more_search_required = True
         # check t_table
         if self.t_table:
-            val = self.get_t_table_val()
-            if val:
+            entry = self.t_table.get_entry(self.board.zob_hash)
+            # if this is a valid entry
+            if entry and entry.depth >= depth:
                 self.t_table_hits += 1
-        if val is None:
-            # explore negamax tree
-            if self.ab_pruning:
-                val = self.explore_negamax(depth + 1, -beta, -alpha)
-            else:
-                val = self.explore_negamax(depth + 1)
-        return val
+                # if no alpha beta pruning, the ttable entry is exact
+                if not entry.ab_pruning or entry.bound == "exact":
+                    more_search_required = False
+                else:
+                    if entry.bound == "lower":
+                        alpha = max(entry.value, alpha)
+                    else:
+                        beta = min(entry.value, alpha)
+                    if alpha >= beta:
+                        more_search_required = False
+                if not more_search_required:
+                    val = entry.value
+        if val is None or more_search_required:
+                val = self.get_negamax_value(depth, alpha, beta)
+        return val, alpha, beta
 
-    def explore_negamax(self, depth, alpha=None, beta=None):
+    def get_negamax_value(self, depth, alpha=None, beta=None):
         if self.ab_pruning:
-            # this is the widest window possible for alpha beta
-            # maybe_value catches None values for early return from timeouts
-            val = self.negamax(depth, alpha, beta)
-            if val is not None:
-                val = -val
+            val = self.negamax(depth + 1, -beta, -alpha)
         else:
-            val = - self.negamax(depth)
+            val = self.negamax(depth + 1)
+        if val is not None:
+            val = -val
         return val
 
     def update_best_moves(self, move, best_moves, val):
@@ -261,29 +274,21 @@ class Negamax(Player):
                 self.vals.append(val)
         return best_moves
 
-    def update_t_table(self, depth, alpha=None, beta=None):
+    def update_t_table(self, depth, value, alpha=None, beta=None):
         if self.t_table is None:
             return
-        value = self.board.value
-        if not self.is_white:
-            value = -value
         zob_hash = self.board.zob_hash
         if self.ab_pruning:
-            entry = TTableEntry(value, depth, zob_hash, True, alpha, beta)
+            if value <= alpha:
+                bound = "upper"
+            elif value >= beta:
+                bound = "lower"
+            else:
+                bound = "exact"
+            entry = TTableEntry(value, depth, zob_hash, True, bound)
         else:
-            entry = TTableEntry(value, depth, zob_hash, alpha, beta)
+            entry = TTableEntry(value, depth, zob_hash)
         self.t_table.try_to_add(entry)
-
-    def get_t_table_val(self):
-        assert self.t_table
-        val = None
-        entry = self.t_table.get_entry(self.board.zob_hash)
-        if entry:
-            self.t_table_hits += 1
-            val = entry.value
-            if not self.is_white:
-                val = -val
-        return val
 
     def get_state(self):
         state = self.board.get_char_state_val()
@@ -311,11 +316,23 @@ class Negamax(Player):
 
 
 class IterativeDeepening(Player):
-    def __init__(self, board, is_white, time_limit, use_t_table, testing=False):
+    def __init__(self, board, is_white, time_limit, ab_pruning, t_table, testing=False):
         Player.__init__(self, board, is_white, testing)
         self.time_limit = time_limit
         self.time_elapsed = None
         self.start_time = None
+        self.ab_pruning = ab_pruning
+        if t_table:
+            self.use_t_table = True
+            self.t_table = TTable()
+        else:
+            self.use_t_table = False
+            self.t_table = None
+        self.states_visited = 0
+        self.t_table_hits = 0
+        self.player = Negamax(board=self.board, is_white=self.is_white, max_depth=0, ab_pruning=self.ab_pruning,
+                              time_limit=self.time_limit, use_t_table=self.use_t_table, t_table=self.t_table,
+                              testing=self.testing)
 
     def get_moves(self):
         depth = 0
@@ -327,8 +344,10 @@ class IterativeDeepening(Player):
             old_moves = new_moves
             self.time_elapsed = time.time() - self.start_time
             time_left = self.time_limit - self.time_elapsed
-            new_moves = Negamax(board=self.board, is_white=self.is_white, max_depth=depth,
-                                ab_pruning=True, time_limit=time_left, testing=self.testing).get_moves()
+            self.player.board = self.board
+            self.player.time_limit = time_left
+            self.player.max_depth = depth
+            new_moves = self.player.get_moves()
         print "depth reached: " + str(depth)
         return old_moves
 

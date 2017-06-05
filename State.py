@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 from Square import Square
-from MoveGenerator import MoveGenerator
 from Undo import Undo
 from PieceList import PieceList
 
@@ -16,7 +15,7 @@ def read_stdin():
 
 class Board:
 
-    def __init__(self, game_state, pawn_evaluation=False, zobrist_file="zobrist_key.npy"):
+    def __init__(self, game_state, pawn_evaluation=False, testing=False):
         # Separate the turn info from the state and store
         self.turn_count = int(game_state[0].split()[0])
         players_turn = game_state[0].split()[1]
@@ -28,10 +27,14 @@ class Board:
 
         # Set up invarients
         self.pawn_evaluation = pawn_evaluation
+        self.testing = testing
         self.row_count = 6
         self.col_count = 5
         # first dimension is rows, second is columns, third is piece type
-        self.zobrist_key = np.load(zobrist_file)
+        self.zobrist_key = np.load("zobrist_square_key.npy")
+        player_key = np.load("zobrist_player_key.npy")
+        self.white_zob_hash = player_key[0]
+        self.black_zob_hash = player_key[1]
         self.num_to_piece = {0: ".",
                              1: "P", 7: "p",
                              2: "N", 8: "n",
@@ -107,12 +110,20 @@ class Board:
         assert False
 
     def read_init_board(self, init_board):
-        """Walks the init_board and adds each piece to the correct piece list"""
+        """
+        Walks the init_board and adds each piece to the correct piece list
+        Also initalizes zob_hash
+        """
         for r in range(self.row_count):
             for c in range(self.col_count):
                 # todo: replace the column numbers with letters
                 char_piece = init_board[r][c]
                 self.add_square(Square((r, c), char_piece))
+        # apply player zob hash
+        if self.whites_turn:
+            self.zob_hash = self.zob_hash ^ self.white_zob_hash
+        else:
+            self.zob_hash = self.zob_hash ^ self.black_zob_hash
 
     def evaluate_all_pawns(self):
         self.evaluate_pawns(True)
@@ -180,7 +191,7 @@ class Board:
         """
         # add square to board and update zob_hash
         self.dict_board[square.cords] = square
-        self.update_zob_hash(square)
+        self.update_zob_hash_square(square)
         # if square is not empty put piece into piece list
         if square.is_empty():
             return
@@ -197,7 +208,7 @@ class Board:
         :return: the piece inside the square
         """
         # update zob_hash
-        self.update_zob_hash(square)
+        self.update_zob_hash_square(square)
         # if there is a piece, see which side it belongs to
         if not square.is_empty():
             # TODO: This could be more DRY
@@ -210,10 +221,22 @@ class Board:
             self.dict_board[square.cords] = replacement_square
         return square.piece
 
-    def update_zob_hash(self, square):
+    def update_zob_hash_square(self, square):
         # xors zob_hash with hash value of square
         square_hash = self.zobrist_key[square.row, square.col, self.piece_to_num[square.piece]]
         self.zob_hash = self.zob_hash ^ square_hash
+
+    def update_zob_hash_player(self):
+        self.zob_hash = self.zob_hash ^ self.white_zob_hash
+        self.zob_hash = self.zob_hash ^ self.black_zob_hash
+
+    def test_zob_hash(self):
+        if self.testing:
+            predicted_zob_hash = 0
+            for square in self.dict_board.items():
+                square_hash = self.zobrist_key[square.row, square.col, self.piece_to_num[square.piece]]
+                predicted_zob_hash = predicted_zob_hash ^ square_hash
+            assert predicted_zob_hash == self.zob_hash
 
     def print_char_state(self):
         """prints the state of the state to stdout"""
@@ -307,10 +330,11 @@ class Board:
             # white promotion
             if piece == "P" and move.dest.row == 0:
                 piece = "Q"
+                self.value += self.piece_value["Q"] - self.piece_value["P"]
             # black promotion
             elif piece == "p" and move.dest.row == 5:
                 piece = "q"
-            self.value += self.piece_value["Q"] - self.piece_value["P"]
+                self.value += self.piece_value["Q"] - self.piece_value["P"]
         # replace piece
         self.add_square(Square(move.dest.cords, piece))
         # update turn counter, switch sides, and flip value
@@ -322,6 +346,8 @@ class Board:
                     self.draw()
         self.whites_turn = not self.whites_turn
         self.value = -self.value
+        self.update_zob_hash_player()
+        self.test_zob_hash()
 
     def undo_move(self):
         """
@@ -343,3 +369,5 @@ class Board:
         # replace old squares
         self.add_square(undo.old_src)
         self.add_square(undo.old_dest)
+        self.update_zob_hash_player()
+        self.test_zob_hash()

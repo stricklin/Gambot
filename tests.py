@@ -7,7 +7,6 @@ import os
 import numpy as np
 from Square import Square
 from Move import Move
-from Undo import Undo
 from TTable import TTable
 from TTableEntry import TTableEntry
 
@@ -30,54 +29,6 @@ def test_moves(board_init, moves):
     assert set(moves) == set(generated_moves)
 
 
-class StartingBoard(unittest.TestCase):
-    init = ["0 W",
-            "kqbnr",
-            "ppppp",
-            ".....",
-            ".....",
-            "PPPPP",
-            "RNBQK"]
-    numpy_board = np.array([[-6., -5., -3., -2., -4.],
-                            [-1., -1., -1., -1., -1.],
-                            [ 0.,  0.,  0.,  0.,  0.],
-                            [ 0.,  0.,  0.,  0.,  0.],
-                            [ 1.,  1.,  1.,  1.,  1.],
-                            [ 4.,  2.,  3.,  5.,  6.]])
-
-    numpy_board = np.array
-    turn_count = 0
-    whites_turn = True
-    white_piece_list = [Square((4, 0), "P"),
-                        Square((4, 1), "P"),
-                        Square((4, 2), "P"),
-                        Square((4, 3), "P"),
-                        Square((4, 4), "P"),
-                        Square((5, 0), "R"),
-                        Square((5, 1), "N"),
-                        Square((5, 2), "B"),
-                        Square((5, 3), "Q"),
-                        Square((5, 4), "K"),
-                        ]
-    black_piece_list = [((0, 0), "k"),
-                        Square((0, 1), "q"),
-                        Square((0, 2), "b"),
-                        Square((0, 3), "n"),
-                        Square((0, 4), "r"),
-                        Square((1, 0), "p"),
-                        Square((1, 1), "p"),
-                        Square((1, 2), "p"),
-                        Square((1, 3), "p"),
-                        Square((1, 4), "p"),
-                        ]
-
-    def test_board_read(self):
-        game_state = State.Board(self.init)
-        assert self.turn_count == game_state.turn_count
-        assert self.whites_turn == game_state.whites_turn
-        assert self.white_piece_list == game_state.white_piece_list
-        assert self.black_piece_list == game_state.black_piece_list
-        assert self.init == game_state.get_char_state()
 
 
 class PawnTest(unittest.TestCase):
@@ -412,10 +363,24 @@ class StartingBoard(unittest.TestCase):
     def test_moves(self):
         test_moves(self.init, self.moves)
 
-    def test_alpha_beta_and_do_undo(self):
+    def test_alphabeta(self):
         board = State.Board(self.init)
         white = Player.Random(board, True, testing=True)
-        black = Player.Negamax(board, False, 2, ab_pruning=True, testing=True)
+        black = Player.Negamax(board, False, 3, ab_pruning=True, testing=True)
+        game = Game(board, white, black, display=False)
+        game.play_game()
+
+    def test_negamax_TTable(self):
+        board = State.Board(self.init)
+        white = Player.Negamax(board, True, 3, ab_pruning=False, use_t_table=True, testing=True)
+        black = Player.Random(board, False, testing=True)
+        game = Game(board, white, black, display=False)
+        game.play_game()
+
+    def test_alphabeta_TTable(self):
+        board = State.Board(self.init)
+        white = Player.Negamax(board, True, 3, ab_pruning=True, use_t_table=True, testing=True)
+        black = Player.Random(board, False, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 
@@ -441,7 +406,6 @@ class StartingBoard(unittest.TestCase):
         board2.apply_move(self.black_knight[1])
         zob_hash2 = board2.zob_hash
         assert zob_hash1 == zob_hash2
-
 
 
 class Ordering(unittest.TestCase):
