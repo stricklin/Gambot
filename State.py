@@ -89,6 +89,9 @@ class Board:
         self.black_pawn_value = 0
         self.value = self.get_value()
 
+        # set last move
+        self.last_move = None
+
     def get_value(self):
         """
         sums the values of the piece lists and gets the difference. side on move - other side
