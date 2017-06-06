@@ -1,4 +1,4 @@
-import State
+import Board
 import Player
 import argparse
 import time
@@ -185,10 +185,10 @@ if __name__ == "__main__":
 
     # read in a state from a file or load the starting state
     if args.file and args.white[0] != "net" and args.black[0] != "net":
-        state = State.read_file(args.file)
-        state = State.Board(state)
+        state = Board.read_file(args.file)
+        state = Board.Board(state)
     else:
-        state = State.Board(["0 W",
+        state = Board.Board(["0 W",
                              "kqbnr",
                              "ppppp",
                              ".....",

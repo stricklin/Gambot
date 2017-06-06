@@ -1,4 +1,4 @@
-import State
+import Board
 from MoveGenerator import MoveGenerator
 from main import Game
 import Player
@@ -23,7 +23,7 @@ init = ["0 W",
 
 
 def test_moves(board_init, moves):
-    game_state = State.Board(board_init)
+    game_state = Board.Board(board_init)
     move_generator = MoveGenerator(game_state)
     generated_moves = set(move_generator.moves)
     assert set(moves) == set(generated_moves)
@@ -215,11 +215,11 @@ class AutoTest(unittest.TestCase):
 
     def test_generated_moves(self):
         for i in range(len(self.tests)):
-            board_prep = State.read_file(self.directory + self.tests[i])
-            game_state = State.Board(board_prep)
+            board_prep = Board.read_file(self.directory + self.tests[i])
+            game_state = Board.Board(board_prep)
             moves = MoveGenerator(game_state).moves
             char_moves = set(Player.Net.get_char_moves(moves))
-            target = set(State.read_file(self.directory + self.targets[i]))
+            target = set(Board.read_file(self.directory + self.targets[i]))
             assert target == char_moves
 
 
@@ -231,7 +231,7 @@ class Promotion(unittest.TestCase):
             ".....",
             ".....",
             "....."]
-    board = State.Board(init)
+    board = Board.Board(init)
 
     before = ["0 W",
               ".....",
@@ -274,7 +274,7 @@ class Turn40Win(unittest.TestCase):
     winner = "black_player"
 
     def test_win(self):
-        board = State.Board(self.init)
+        board = Board.Board(self.init)
         board.apply_move(self.move)
         assert self.winner == board.winner
 
@@ -291,7 +291,7 @@ class Turn40Draw(unittest.TestCase):
     winner = "draw"
 
     def test_win(self):
-        board = State.Board(self.init)
+        board = Board.Board(self.init)
         board.apply_move(self.move)
         assert self.winner == board.winner
 
@@ -364,28 +364,28 @@ class StartingBoard(unittest.TestCase):
         test_moves(self.init, self.moves)
 
     def test_alphabeta(self):
-        board = State.Board(self.init)
+        board = Board.Board(self.init)
         white = Player.Random(board, True, testing=True)
         black = Player.Negamax(board, False, 3, ab_pruning=True, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 
     def test_negamax_TTable(self):
-        board = State.Board(self.init)
+        board = Board.Board(self.init)
         white = Player.Negamax(board, True, 3, ab_pruning=False, use_t_table=True, testing=True)
         black = Player.Random(board, False, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 
     def test_alphabeta_TTable(self):
-        board = State.Board(self.init)
+        board = Board.Board(self.init)
         white = Player.Negamax(board, True, 3, ab_pruning=True, use_t_table=True, testing=True)
         black = Player.Random(board, False, testing=True)
         game = Game(board, white, black, display=False)
         game.play_game()
 
     def test_zob_hash(self):
-        board1 = State.Board(self.init)
+        board1 = Board.Board(self.init)
         board1.apply_move(self.white_left_pawn[0])
         board1.apply_move(self.black_left_pawn[0])
         board1.apply_move(self.white_left_pawn[1])
@@ -395,7 +395,7 @@ class StartingBoard(unittest.TestCase):
         board1.apply_move(self.white_right_pawn[1])
         board1.apply_move(self.black_knight[1])
         zob_hash1 = board1.zob_hash
-        board2 = State.Board(self.init)
+        board2 = Board.Board(self.init)
         board2.apply_move(self.white_left_pawn[0])
         board2.apply_move(self.black_knight[0])
         board2.apply_move(self.white_right_pawn[0])
@@ -454,7 +454,7 @@ class PawnEval(unittest.TestCase):
                     "P....",
                     ".....",
                     "....."]
-    doubled_board = State.Board(doubled_init)
+    doubled_board = Board.Board(doubled_init)
     expected_doubled_value = 2 * doubled_board.doubled_pawn_value
 
     gaurded_init = ["0 W",
@@ -464,7 +464,7 @@ class PawnEval(unittest.TestCase):
                     ".P...",
                     ".....",
                     "....."]
-    gaurded_board = State.Board(gaurded_init)
+    gaurded_board = Board.Board(gaurded_init)
     expected_gaurded_value = 2 * gaurded_board.gaurded_pawn_value
 
     def test_doubled_pawn_eval(self):
