@@ -143,7 +143,6 @@ class Negamax(Player):
         else:
             self.t_table = None
         self.print_node_hit_info = print_visited
-        self.max_val = -10000
         self.time_limit = time_limit
         self.start_time = None
         self.states_visited = 0
@@ -155,6 +154,7 @@ class Negamax(Player):
         :return: returns the moves with the highest value
         """
         alpha = -10000
+        max_val = -10000
         beta = 10000
         assert self.is_white == self.board.whites_turn
         self.states_visited = 0
@@ -164,7 +164,6 @@ class Negamax(Player):
             self.start_time = time.time()
         best_moves = []
         # initialize max_val to lowest value
-        self.max_val = -10000
         # generate and test each move
         moves = MoveGenerator(self.board).moves
         if not moves:
@@ -180,7 +179,7 @@ class Negamax(Player):
             # apply move
             self.board.apply_move(move)
             self.states_visited += 1
-            val, alpha, beta = self.get_board_value(0, alpha, beta)
+            val, max_val, beta = self.get_board_value(0, max_val, beta)
             if val is None:
                 # val could only be none because of timeout
                 self.board.undo_move()
@@ -188,7 +187,7 @@ class Negamax(Player):
                     self.check_undo(old_state, old_pieces, old_zob_hash)
                 return None
             self.update_t_table(0, val, alpha, beta)
-            best_moves = self.update_best_moves(move, best_moves, val)
+            best_moves, max_val = self.update_best_moves(move, best_moves, val, max_val)
             # undo move
             self.board.undo_move()
             if self.testing:
@@ -236,7 +235,7 @@ class Negamax(Player):
             if self.testing:
                 self.check_undo(old_state, old_pieces, old_zob_hash)
             return None
-        self.update_t_table(depth, max_val, original_alpha, beta)
+        self.update_t_table(depth, max_val, alpha, beta)
         # undo move
         self.board.undo_move()
         if self.testing:
@@ -323,7 +322,7 @@ class Negamax(Player):
             val = -val
         return val
 
-    def update_best_moves(self, move, best_moves, val):
+    def update_best_moves(self, move, best_moves, val, max_val):
         """
         updates the list of best moves
         :param move: the current move 
@@ -332,13 +331,13 @@ class Negamax(Player):
         :return: the new list of best moves
         """
         # if this is a better move, remember it
-        if val > self.max_val:
-            self.max_val = val
+        if val > max_val:
+            max_val = val
             best_moves = [move]
         # if more than one move is best, keep them all
-        elif val == self.max_val:
+        elif val == max_val:
             best_moves.append(move)
-        return best_moves
+        return best_moves, max_val
 
     def update_t_table(self, depth, value, alpha=None, beta=None):
         """
