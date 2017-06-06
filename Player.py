@@ -154,6 +154,8 @@ class Negamax(Player):
         explores negamax tree to select moves
         :return: returns the moves with the highest value
         """
+        alpha = -10000
+        beta = 10000
         assert self.is_white == self.board.whites_turn
         self.states_visited = 0
         self.t_table_hits = 0
@@ -178,14 +180,14 @@ class Negamax(Player):
             # apply move
             self.board.apply_move(move)
             self.states_visited += 1
-            val = self.get_board_value(0, -10000, 10000)
+            val, alpha, beta = self.get_board_value(0, alpha, beta)
             if val is None:
                 # val could only be none because of timeout
                 self.board.undo_move()
                 if self.testing:
                     self.check_undo(old_state, old_pieces, old_zob_hash)
                 return None
-            self.update_t_table(0, val, -10000, 10000)
+            self.update_t_table(0, val, alpha, beta)
             best_moves = self.update_best_moves(move, best_moves, val)
             # undo move
             self.board.undo_move()
