@@ -1,6 +1,6 @@
 Gambot: a minichess player
 
-Gambot runs best with pypy with numpy installed, but it can also be ran with python.
+Gambot runs best with pypy, but it can also be ran with  just python.
 python ./main.py -p -t -w pt:net u:username p:password gt:offer -b pt:id etl:2 ltl:9
 Will start a game with:
     -p, pawn promotion turned on
@@ -91,4 +91,4 @@ tests.py is where all of the unittests live. They are a major boon when doing
 major refactoring.
 
 The biggest problem in my program is alphabeta pruning with TTables turned on
-doesn't work. If I have time later in this week I will be trying to fix this.
+doesn't work.
