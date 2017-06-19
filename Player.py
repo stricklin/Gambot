@@ -19,6 +19,8 @@ class Player:
     def get_moves(self): raise NotImplementedError
 
     def get_move(self):
+        if self.board.winner is None:
+            assert self.is_white == self.board.whites_turn
         # return a random move from the best moves
         best_moves = self.get_moves()
         # if the game is over, return none
@@ -156,7 +158,6 @@ class Negamax(Player):
         alpha = -10000
         max_val = -10000
         beta = 10000
-        assert self.is_white == self.board.whites_turn
         self.states_visited = 0
         self.t_table_hits = 0
         # start timer for iteritive deepening

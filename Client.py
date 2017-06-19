@@ -3,6 +3,7 @@ import time
 
 
 class Client:
+    """this handles all comunication between a net player and the chess server"""
 
     def __init__(self):
         self.host = "imcs.svcs.cs.pdx.edu"
